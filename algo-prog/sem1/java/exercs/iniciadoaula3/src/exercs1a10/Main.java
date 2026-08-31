@@ -48,17 +48,55 @@ public class Main {
 
 	public static void metodoTabelaIMC() {
 		// TODO Auto-generated method stub
-
+		Scanner readr = new Scanner(System.in);
+		System.out.printf("Para os próximos dados, utilize valores em unidades de medida compatíveis — por exemplo, kg e m: SI; lb e ft: imperial; etc.\nForneça o nome da pessoa. ");
+		String nomepessoa = readr.nextLine();
+		System.out.printf("Forneça o peso da pessoa. ");
+		Scanner dblreader = new Scanner(System.in);
+		double bodywg = dblreader.nextDouble();
+		System.out.printf("Forneça a altura da pessoa. ");
+		double height = dblreader.nextDouble();
+		readr.close();
+		dblreader.close();
+		final String imcresult = "O IMC de ".concat(nomepessoa).concat(" é ").concat(String.valueOf(bodywg / (height * height)).concat("."));
 	}
 
 	public static void metodoNotasUni() {
 		// TODO Auto-generated method stub
-
+		double na, nb;
+		int contadfalta;
+		Scanner scd = new Scanner(System.in), sci = new Scanner(System.in);
+		System.out.printf("Esta subrotina calcula sua média final e o(a) classifica em aprovado(a), reprovado(a) ou desistente.\nPara começar, insira sua nota A: ");
+		na = scd.nextDouble();
+		System.out.printf("Insira sua nota B: ");
+		nb = scd.nextDouble();
+		System.out.printf("Por fim, insira o total de faltas registradas: ");
+		contadfalta = sci.nextInt();
+		if(contadfalta>33) {
+			System.out.printf("Você tem %i faltas e portanto se enquadra em desistente! O máximo admitido é 33.");
+			scd.close();
+			sci.close();
+			return;
+		}
+		final String result = ((na+nb)/2>=7) ? "aprovado por nota." : "reprovado por nota.";
+		System.out.printf("Resultado da avaliação final por média: %s",result);
+		scd.close();
+		sci.close();
 	}
 
 	public static void metodoMontanhaRussa() {
 		// TODO Auto-generated method stub
-
+		double idd, altura;
+		Scanner sc = new Scanner(System.in);
+		do {
+			System.out.printf("Bem-vindo à montanha russa do sim/não! Informe sua idade e aperte enter: ");
+			idd = sc.nextDouble();
+			System.out.printf("Agora informe sua altura e aperte enter: ");
+			altura = sc.nextDouble();
+			final String disp = (idd>10||altura>1) ? "Acesso liberado à motanha-russa.\n" : "Acesso negado à montanha-russa devido a idade e altura insuficientes.\n";
+			System.out.printf(disp);
+		}while(idd<=0&&altura>0);
+		sc.close();
 	}
 
 	public static void metodoTriangulos() {
@@ -95,15 +133,22 @@ public class Main {
 		}
 		sc.close();
 		if(idd[0]==idd[1]) {
-			//comparacoes possiveis: 0,1; 0,2; 1,2;
+			//comparacoes possiveis:
 			// >< | >= | >> | <= | << | <> | =< | => | == 
-			if(idd[1]==idd[2]) System.out.printf("Os três têm a mesma idade! Parabéns!\n"); //==
-			else if(idd[0]>idd[2]) System.out.printf("A idade de %s e %s (%i) é maior que a de %s (%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=>
-			else System.out.printf("A idade de %s e %s (%i) é menor que a de %s (%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=<
+			if(idd[1]==idd[2]) System.out.printf("Os três têm a mesma idade (%i anos)! Parabéns!\n",idd[0]); //==
+			else if(idd[0]>idd[2]) System.out.printf("A idade de %s e %s, a maior do grupo (%i), é maior que a de %s (%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=>
+			else System.out.printf("A idade de %s e %s (%i) é menor que a de %s, a maior do grupo(%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=<
 		}
-		else if(idd[2]==idd[1]){
-			
-		} else System.out.printf("Os três têm idades diferentes!");
+		else if(idd[0]>idd[1]){
+			 if(idd[1]==idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é igual à de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>=
+			 else if(idd[1]<idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é menor à de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //><
+			 else System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é maior que a de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>>
+		} else { //<
+			if(idd[1]==idd[2]) System.out.printf("A idade de %s (%i) é menor que a de %s (%i), que é igual à de %s (%i), sendo a segunda/terceira idade a maior do grupo.",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<=
+			else if(idd[1]<idd[2]) System.out.printf("A idade de %s (%i) é menor que a de %s (%i), que é menor que a de %s, a maior do grupo (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<<
+			else System.out.printf("A idade de %s (%i) é menor que a de %s (%i anos, a maior do grupo), que é maior que a de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<>
+		}
+		if(idd[0]!=idd[1]&&idd[0]!=idd[2]&&idd[1]!=idd[2]) System.out.printf("Os três têm idades diferentes!"); 
 	}
 
 	public static void main(String[] args) {
