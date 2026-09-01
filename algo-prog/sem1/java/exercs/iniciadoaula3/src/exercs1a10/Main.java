@@ -1,4 +1,7 @@
 package exercs1a10;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -27,27 +30,151 @@ public class Main {
 	}
 
 	public static void metodoOrdenacaoCres() {
-		// TODO Auto-generated method stub
-
+		double numspordenacao[] = new double[3];
+		System.out.printf("A seguir, forneça os números a serem ordenados.\n");
+		Scanner sc = new Scanner(System.in);
+		for(int i=0;i<=2;i++) {
+			System.out.printf("Insira o número no índice %i: ",i);
+			numspordenacao[i] = sc.nextDouble();
+		}
+		Arrays.sort(numspordenacao);
+		System.out.printf("Veja o array ordenado:\n");
+		for(int i=0;i<=2;i++) {
+			System.out.printf("%d\n",numspordenacao[i]);
+		}
+		sc.close();
 	}
 
 	public static void metodoMedias() {
-		// TODO Auto-generated method stub
-		
+		int opesc = 0;
+		double resul;
+		String tipomedia;
+		Scanner isc = new Scanner(System.in);
+		Scanner dbsc = new Scanner(System.in);
+		System.out.printf("Escolha o tipo de média das 4 notas estudantis que deseja obter – código 1 para aritmética, código 2 para harmônica ou código 3 para ponderada – e então pressione Enter: ");
+		opesc = isc.nextInt();
+		switch(opesc) {
+			case 1 ->{
+				double[] elma = new double[4];
+				tipomedia = "aritmética";
+				double eltot = 0;
+				for(int i=0;i<=3; i++) {
+					boolean notavalida;
+					do {
+					System.out.printf("Digite aqui um número ou nota para ocupar a variável x%d da fórmula da média aritmética. ",(i+1));
+					elma[i] = dbsc.nextDouble();
+					notavalida = (elma[i]<0||elma[i]>10) ? false : true;
+					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.");
+					} while(notavalida==false);
+					eltot+=elma[i];
+				}
+				resul=eltot/elma.length;
+				String aval = (resul>=6) ? "aprovado" : "reprovado";
+				System.out.printf("Aluno %s.\n)",aval);
+			} 
+			case 2 ->{
+				double[] elmh = new double[4];
+				tipomedia = "harmônica";
+				boolean notavalida;
+				for(int i=0;i<=2;i++){
+					do {
+					System.out.printf("Digite aqui um número ou nota para ocupar a variável x%d da fórmula da média harmônica. ",(i+1));
+					elmh[i] = dbsc.nextDouble();
+					notavalida = (elmh[i]<0||elmh[i]>10) ? false : true;
+					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.");
+					} while(notavalida==false);
+				}
+				double operandlen = elmh.length;
+				double denominatortot = 0;
+				for (int i = 0; i < operandlen; i++) {
+					denominatortot += (1 / elmh[i]);
+				}
+				resul = operandlen / denominatortot;
+			}
+			case 3 ->{
+				double[][] elmp = new double[4][2];
+				tipomedia = "ponderada";
+				for(int i=0; i<=3; i++) {
+					for(int j=0; j<=1; j++) {
+						System.out.printf("Digite aqui um número ou nota para ocupar a variável %s%d da fórmula da média ponderada. ", (j==0 ? "x" : "(p)eso"), (i+1));
+						elmp[i][j] = dbsc.nextDouble();
+					}
+				}
+				double coeflen = elmp.length;
+				double operandtot = 0, weightot = 0;
+				for (int i = 0; i < coeflen; i++) {
+						operandtot += elmp[i][0] * elmp[i][1];
+						weightot += elmp[i][1];
+					
+				}
+				resul = operandtot / weightot;
+			}
+			default ->{
+				System.out.printf("Não foi escolhido um tipo de média válido (1, 2 ou 3).");
+				dbsc.close();
+				isc.close();
+				return;
+			}
+		}
+		System.out.printf("Resultado da média %s: %d",tipomedia,resul);
+		dbsc.close();
+		isc.close();
 	}
 
 	public static void metodoOperacoesMat() {
-		// TODO Auto-generated method stub
-		
+		double result = 0;
+		String opstr, tipoperacao = new String();
+		Scanner sc = new Scanner(System.in);
+		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y ou x[: ou /]d) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração e divisão, SEM CARACTERES ENTRE OS OPERADORES: ");
+		opstr = sc.nextLine();
+		opstr = opstr.substring(0, 3);
+		switch(opstr.charAt(1)) {
+			case '+' -> {
+				result = Double.parseDouble(opstr.substring(0, 1)) + Double.parseDouble(opstr.substring(2, 3));
+				tipoperacao = "adição";
+			} 
+			case '-' -> {
+				result = Double.parseDouble(opstr.substring(0, 1)) - Double.parseDouble(opstr.substring(2, 3));
+				tipoperacao = "subtração";
+			}
+			case '/', ':' -> {
+				double dividendo = Double.parseDouble(opstr.substring(2, 3));
+				if(dividendo==0) {
+					System.out.printf("Divisão por zero é igual a infinito positivo ou negativo, a depender do sinal do dividendo.");
+					break;
+				}
+				result = Double.parseDouble(opstr.substring(0, 1)) / dividendo;
+				tipoperacao = "divisão";
+			} 
+			case '*' -> {
+				result = Double.parseDouble(opstr.substring(0, 1)) * Double.parseDouble(opstr.substring(2, 3));
+				tipoperacao = "multiplicação";
+			}
+			default -> {
+				System.out.printf("Operação inválida ou não suportada!");
+			}
+		}
+		sc.close();
+		System.out.printf("Resultado da %s: %d",tipoperacao,result);
 	}
 
 	public static void metodoIR() {
-		// TODO Auto-generated method stub
-
+		BigDecimal salmensarred;
+		double salan, salextraord, salferias, rendsaltot;
+		Scanner sc = new Scanner(System.in);
+		System.out.printf("Esta funcionalidade calcula seu salário anual bruto, décimo terceiro salário, salário de férias com base na média salarial bruta em um ano e desconto anual de IR (fonte: <www.gov.br/receitafederal/pt-br>, ano-calendário 2026). Insira sua média salarial no ano e então pressione enter: ");
+		salmensarred = new BigDecimal(sc.nextDouble()).setScale(2,RoundingMode.UP);
+		double salmensarredb = salmensarred.doubleValue();
+		salan = salmensarredb * 12;
+		salferias = salmensarredb * 4/3;
+		salextraord = salmensarredb;
+		rendsaltot = salan+salferias+salextraord;
+		double totdescrend = (rendsaltot>55976.15) ? 10853.78 : (rendsaltot>=45012.61&&rendsaltot<=55976.15) ? 8054.97 : (rendsaltot>=33919.81&&rendsaltot<45012.60) ? 4679.67 : (rendsaltot>=28467.21&&rendsaltot<=33919.80) ? 2135.04 : 0;
+		System.out.printf("Resultados da simulação:\nSalário anual bruto: R$ %d\nDécimo terceiro salário: R$ %d\nSalário de mês-recesso: R$ %d\nTotal de rendimentos regulares tributáveis: R$ %d\nDesconto de IR de incidência anual: R$ %d.",salan,salextraord,salferias,rendsaltot,totdescrend);
+		sc.close();
 	}
 
 	public static void metodoTabelaIMC() {
-		// TODO Auto-generated method stub
 		Scanner readr = new Scanner(System.in);
 		System.out.printf("Para os próximos dados, utilize valores em unidades de medida compatíveis — por exemplo, kg e m: SI; lb e ft: imperial; etc.\nForneça o nome da pessoa. ");
 		String nomepessoa = readr.nextLine();
@@ -58,11 +185,13 @@ public class Main {
 		double height = dblreader.nextDouble();
 		readr.close();
 		dblreader.close();
-		final String imcresult = "O IMC de ".concat(nomepessoa).concat(" é ").concat(String.valueOf(bodywg / (height * height)).concat("."));
+		final double quoimc = (bodywg / (height * height));
+		final String nomeclass = (quoimc<16) ? "muito abaixo do peso" : (quoimc>=16&quoimc<18.5) ? "abaixo do peso" : (quoimc>=18.5&&quoimc<25) ? "normal" : (quoimc>=25&&quoimc<30) ? "sobrepeso" : (quoimc>=30&quoimc<35) ?  "obeso – classe I" : (quoimc>=35&&quoimc<40) ? "obeso – classe II" : (quoimc>=40) ? "obeso – classe III" : "fora do normal/esperado";
+		final String resultimc = "O IMC de ".concat(nomepessoa).concat(" é ").concat(String.valueOf(quoimc).concat(". Ele(a) se enquadra em ").concat(nomeclass).concat("."));
+		System.out.printf(resultimc);
 	}
 
 	public static void metodoNotasUni() {
-		// TODO Auto-generated method stub
 		double na, nb;
 		int contadfalta;
 		Scanner scd = new Scanner(System.in), sci = new Scanner(System.in);
@@ -85,7 +214,6 @@ public class Main {
 	}
 
 	public static void metodoMontanhaRussa() {
-		// TODO Auto-generated method stub
 		double idd, altura;
 		Scanner sc = new Scanner(System.in);
 		do {
