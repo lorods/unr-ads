@@ -25,8 +25,7 @@ public class Main {
 	}
 
 	public static void metodoObterMod() {
-		// TODO Auto-generated method stub
-	
+		
 	}
 
 	public static void metodoOrdenacaoCres() {
@@ -125,30 +124,41 @@ public class Main {
 		double result = 0;
 		String opstr, tipoperacao = new String();
 		Scanner sc = new Scanner(System.in);
-		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y ou x[: ou /]d) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração e divisão, SEM CARACTERES ENTRE OS OPERADORES: ");
+		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y, x[: ou /]d ou x%d) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração, divisão e módulo, SEM CARACTERES ENTRE OS OPERADORES: ");
 		opstr = sc.nextLine();
-		opstr = opstr.substring(0, 3);
-		switch(opstr.charAt(1)) {
+		String[] parsdopstr = opstr.split("+|-|/|:|*|%");
+		char opertr = (opstr.contains("+")) ? '+' : (opstr.contains("-")) ? '-' : (opstr.contains("/") || opstr.contains(":")) ? '/' : (opstr.contains("*")) ? '*' : (opstr.contains("%")) ? '%' : null; 
+		switch(opertr) {
 			case '+' -> {
-				result = Double.parseDouble(opstr.substring(0, 1)) + Double.parseDouble(opstr.substring(2, 3));
 				tipoperacao = "adição";
+				result = Double.parseDouble(parsdopstr[0]) + Double.parseDouble(parsdopstr[1]);
 			} 
 			case '-' -> {
-				result = Double.parseDouble(opstr.substring(0, 1)) - Double.parseDouble(opstr.substring(2, 3));
 				tipoperacao = "subtração";
+				result = Double.parseDouble(parsdopstr[0]) - Double.parseDouble(parsdopstr[1]);
 			}
-			case '/', ':' -> {
+			case '/' -> {
 				double dividendo = Double.parseDouble(opstr.substring(2, 3));
 				if(dividendo==0) {
 					System.out.printf("Divisão por zero é igual a infinito positivo ou negativo, a depender do sinal do dividendo.");
 					break;
 				}
-				result = Double.parseDouble(opstr.substring(0, 1)) / dividendo;
+				result = Double.parseDouble(parsdopstr[0]) / Double.parseDouble(parsdopstr[1]);
 				tipoperacao = "divisão";
 			} 
 			case '*' -> {
-				result = Double.parseDouble(opstr.substring(0, 1)) * Double.parseDouble(opstr.substring(2, 3));
+				result = Double.parseDouble(parsdopstr[0]) * Double.parseDouble(parsdopstr[1]);
 				tipoperacao = "multiplicação";
+			}
+			case '%' -> {
+				double operands[] = {Double.parseDouble(parsdopstr[0]), Double.parseDouble(parsdopstr[1])};
+				result = operands[0] % operands[1];
+				tipoperacao = "módulo";
+				if(result==0) System.out.printf("O primeiro operando é divisível de forma exata pelo segundo, pois o resto da divisão é 0.\n");
+				else System.out.printf("O primeiro operando não é divisível de forma exata pelo segundo, pois o resto da divisão não é 0.\n");
+				String resultparid[] = {(operands[0] % 2 == 0 ? "par" : "ímpar"),(operands[1] % 2 == 0 ? "par" : "ímpar")};
+				String paridadenum = "O primeiro operando é ".concat(resultparid[0]).concat(", e o segundo, ").concat(resultparid[1]).concat(".");
+				System.out.printf(paridadenum);
 			}
 			default -> {
 				System.out.printf("Operação inválida ou não suportada!");
