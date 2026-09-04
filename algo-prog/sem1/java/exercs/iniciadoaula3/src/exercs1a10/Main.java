@@ -5,7 +5,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.function.Consumer;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+class CloseShieldInputStream extends FilterInputStream {
+    public CloseShieldInputStream(InputStream in) {
+        super(in);
+    }
+    @Override
+    public void close() throws IOException {
+        return;
+    }
+}
+
 public class Main {
 	public static Map<String, String> parseEntries(String[] entryset) {
 		Map<String, String> retentry = new HashMap<String, String>();
@@ -16,12 +29,11 @@ public class Main {
 	}
 	
 	public static void metodoEncerramento() {
-		
+		System.out.printf("Finalizando execução...");
 	}
 	
 	public static void metodoOpcaoInvalida() {
-		// TODO Auto-generated method stub
-		
+		System.out.printf("Essa opção não é válida! Escolha novamente.\n");
 	}
 
 	public static void metodoObterMod() {
@@ -31,7 +43,7 @@ public class Main {
 	public static void metodoOrdenacaoCres() {
 		double numspordenacao[] = new double[3];
 		System.out.printf("A seguir, forneça os números a serem ordenados.\n");
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		for(int i=0;i<=2;i++) {
 			System.out.printf("Insira o número no índice %i: ",i);
 			numspordenacao[i] = sc.nextDouble();
@@ -48,8 +60,8 @@ public class Main {
 		int opesc = 0;
 		double resul;
 		String tipomedia;
-		Scanner isc = new Scanner(System.in);
-		Scanner dbsc = new Scanner(System.in);
+		Scanner isc = new Scanner(new CloseShieldInputStream(System.in));
+		Scanner dbsc = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Escolha o tipo de média das 4 notas estudantis que deseja obter – código 1 para aritmética, código 2 para harmônica ou código 3 para ponderada – e então pressione Enter: ");
 		opesc = isc.nextInt();
 		switch(opesc) {
@@ -123,7 +135,7 @@ public class Main {
 	public static void metodoOperacoesMat() {
 		double result = 0;
 		String opstr, tipoperacao = new String();
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y, x[: ou /]d ou x%d) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração, divisão e módulo, SEM CARACTERES ENTRE OS OPERADORES: ");
 		opstr = sc.nextLine();
 		String[] parsdopstr = opstr.split("+|-|/|:|*|%");
@@ -171,7 +183,7 @@ public class Main {
 	public static void metodoIR() {
 		BigDecimal salmensarred;
 		double salan, salextraord, salferias, rendsaltot;
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Esta funcionalidade calcula seu salário anual bruto, décimo terceiro salário, salário de férias com base na média salarial bruta em um ano e desconto anual de IR (fonte: <www.gov.br/receitafederal/pt-br>, ano-calendário 2026). Insira sua média salarial no ano e então pressione enter: ");
 		salmensarred = new BigDecimal(sc.nextDouble()).setScale(2,RoundingMode.UP);
 		double salmensarredb = salmensarred.doubleValue();
@@ -185,11 +197,11 @@ public class Main {
 	}
 
 	public static void metodoTabelaIMC() {
-		Scanner readr = new Scanner(System.in);
+		Scanner readr = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Para os próximos dados, utilize valores em unidades de medida compatíveis — por exemplo, kg e m: SI; lb e ft: imperial; etc.\nForneça o nome da pessoa. ");
 		String nomepessoa = readr.nextLine();
 		System.out.printf("Forneça o peso da pessoa. ");
-		Scanner dblreader = new Scanner(System.in);
+		Scanner dblreader = new Scanner(new CloseShieldInputStream(System.in));
 		double bodywg = dblreader.nextDouble();
 		System.out.printf("Forneça a altura da pessoa. ");
 		double height = dblreader.nextDouble();
@@ -197,14 +209,14 @@ public class Main {
 		dblreader.close();
 		final double quoimc = (bodywg / (height * height));
 		final String nomeclass = (quoimc<16) ? "muito abaixo do peso" : (quoimc>=16&quoimc<18.5) ? "abaixo do peso" : (quoimc>=18.5&&quoimc<25) ? "normal" : (quoimc>=25&&quoimc<30) ? "sobrepeso" : (quoimc>=30&quoimc<35) ?  "obeso – classe I" : (quoimc>=35&&quoimc<40) ? "obeso – classe II" : (quoimc>=40) ? "obeso – classe III" : "fora do normal/esperado";
-		final String resultimc = "O IMC de ".concat(nomepessoa).concat(" é ").concat(String.valueOf(quoimc).concat(". Ele(a) se enquadra em ").concat(nomeclass).concat("."));
+		final String resultimc = "O IMC de ".concat(nomepessoa).concat(" é ").concat(String.valueOf(quoimc).concat(". Ele(a) se enquadra em ").concat(nomeclass).concat(".\n"));
 		System.out.printf(resultimc);
 	}
 
 	public static void metodoNotasUni() {
 		double na, nb;
 		int contadfalta;
-		Scanner scd = new Scanner(System.in), sci = new Scanner(System.in);
+		Scanner scd = new Scanner(new CloseShieldInputStream(System.in)), sci = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Esta subrotina calcula sua média final e o(a) classifica em aprovado(a), reprovado(a) ou desistente.\nPara começar, insira sua nota A: ");
 		na = scd.nextDouble();
 		System.out.printf("Insira sua nota B: ");
@@ -212,20 +224,20 @@ public class Main {
 		System.out.printf("Por fim, insira o total de faltas registradas: ");
 		contadfalta = sci.nextInt();
 		if(contadfalta>33) {
-			System.out.printf("Você tem %i faltas e portanto se enquadra em desistente! O máximo admitido é 33.");
+			System.out.printf("Você tem %d faltas e portanto se enquadra em desistente! O máximo admitido é 33.\n",contadfalta);
 			scd.close();
 			sci.close();
 			return;
 		}
 		final String result = ((na+nb)/2>=7) ? "aprovado por nota." : "reprovado por nota.";
-		System.out.printf("Resultado da avaliação final por média: %s",result);
+		System.out.printf("\nResultado da avaliação final por média: %s\n",result);
 		scd.close();
 		sci.close();
 	}
 
 	public static void metodoMontanhaRussa() {
 		double idd, altura;
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		do {
 			System.out.printf("Bem-vindo à montanha russa do sim/não! Informe sua idade e aperte enter: ");
 			idd = sc.nextDouble();
@@ -242,13 +254,13 @@ public class Main {
 		do {
 		System.out.printf("Informe a primeira medida de lado do triângulo.\n");
 		double l[] = {1,1,1};
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		l[0] = sc.nextDouble();
 		System.out.printf("Informe a segunda medida de lado do triângulo.\n");
 		l[1] = sc.nextDouble();
 		System.out.printf("Informe a terceira medida de lado do triângulo.\n");
 		l[2] = sc.nextDouble();
-		tritype = (l[0]==l[1] && l[1]==l[2]) ? "Seu triângulo é equilátero.\n."  :  (l[0]==l[1] || l[0]==l[2] || l[1]==l[2]) ? "Seu triângulo é isósceles.\n" : (l[0]>0&&l[1]>0&&l[2]>0) ? "Seu triângulo é escaleno.\n" : "Medida inválida de pelo menos um dos lados!";
+		tritype = (l[0]==l[1] && l[1]==l[2]) ? "Seu triângulo é equilátero.\n"  :  (l[0]==l[1] || l[0]==l[2] || l[1]==l[2]) ? "Seu triângulo é isósceles.\n" : (l[0]>0&&l[1]>0&&l[2]>0) ? "Seu triângulo é escaleno.\n" : "Medida inválida de pelo menos um dos lados!";
 		System.out.printf("%s",tritype);
 		sc.close();
 		} while(tritype.equals("Medida inválida de pelo menos um dos lados!"));
@@ -256,7 +268,7 @@ public class Main {
 
 	public static void metodoIdadesCriancas() {
 		String crianca[] = {"Joãozinho","Maria","Zezinho"};
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		boolean isvalidage;
 		int i=0, idd[] = {0,0,0};
 		for(String cria : crianca) {
@@ -267,26 +279,27 @@ public class Main {
 				if(!isvalidage) System.out.printf("Idade inválida! Insira-a novamente.\n");
 			}
 			while(!isvalidage);
+			System.out.printf("Você informou %d.\n",idd[i]);
 			i++;
 		}
 		sc.close();
 		if(idd[0]==idd[1]) {
 			//comparacoes possiveis:
 			// >< | >= | >> | <= | << | <> | =< | => | == 
-			if(idd[1]==idd[2]) System.out.printf("Os três têm a mesma idade (%i anos)! Parabéns!\n",idd[0]); //==
-			else if(idd[0]>idd[2]) System.out.printf("A idade de %s e %s, a maior do grupo (%i), é maior que a de %s (%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=>
-			else System.out.printf("A idade de %s e %s (%i) é menor que a de %s, a maior do grupo(%i).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=<
+			if(idd[1]==idd[2]) System.out.printf("Os três têm a mesma idade (%d anos)! Parabéns!\n",idd[0]); //==
+			else if(idd[0]>idd[2]) System.out.printf("A idade de %s e %s, a maior do grupo (%d), é maior que a de %s (%d).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=>
+			else System.out.printf("A idade de %s e %s (%d) é menor que a de %s, a maior do grupo (%d).",crianca[0],crianca[1],idd[0],crianca[2],idd[2]);//=<
 		}
 		else if(idd[0]>idd[1]){
-			 if(idd[1]==idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é igual à de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>=
-			 else if(idd[1]<idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é menor à de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //><
-			 else System.out.printf("A idade de %s, o mais velho dos três (%i), é maior que a de %s (%i), que é maior que a de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>>
+			 if(idd[1]==idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%d), é maior que a de %s (%d), que é igual à de %s (%d).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>=
+			 else if(idd[1]<idd[2]) System.out.printf("A idade de %s, o mais velho dos três (%d), é maior que a de %s (%d), que é menor à de %s (%d).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //><
+			 else System.out.printf("A idade de %s, o mais velho dos três (%d), é maior que a de %s (%d), que é maior que a de %s (%d).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //>>
 		} else { //<
-			if(idd[1]==idd[2]) System.out.printf("A idade de %s (%i) é menor que a de %s (%i), que é igual à de %s (%i), sendo a segunda/terceira idade a maior do grupo.",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<=
-			else if(idd[1]<idd[2]) System.out.printf("A idade de %s (%i) é menor que a de %s (%i), que é menor que a de %s, a maior do grupo (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<<
-			else System.out.printf("A idade de %s (%i) é menor que a de %s (%i anos, a maior do grupo), que é maior que a de %s (%i).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<>
+			if(idd[1]==idd[2]) System.out.printf("A idade de %s (%d) é menor que a de %s (%d), que é igual à de %s (%d), sendo a segunda/terceira idade a maior do grupo.",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<=
+			else if(idd[1]<idd[2]) System.out.printf("A idade de %s (%d) é menor que a de %s (%d), que é menor que a de %s, a maior do grupo (%d).",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<<
+			else System.out.printf("A idade de %s (%d) é menor que a de %s (%d anos, a maior do grupo), que é maior que a de %s (%d).\n",crianca[0],idd[0],crianca[1],idd[1],crianca[2],idd[2]); //<>
 		}
-		if(idd[0]!=idd[1]&&idd[0]!=idd[2]&&idd[1]!=idd[2]) System.out.printf("Os três têm idades diferentes!"); 
+		if(idd[0]!=idd[1]&&idd[0]!=idd[2]&&idd[1]!=idd[2]) System.out.printf(" Os três têm idades diferentes!\n"); 
 	}
 
 	public static void main(String[] args) {
@@ -296,20 +309,20 @@ public class Main {
 				"Ordenacao crescente", "OPEX10", "Verificacao de divisao exata e paridade numerica", "OPEXSAIDA",
 				"Encerramento" };
 		Map<String, String> mp = parseEntries(optlbl);
-		String chopt, fstr;
-		Scanner sc;
+		String chopt=new String(), fstr;
+		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
+		Runnable task;
 		do {
-			System.out.printf("Digite a operação a realizar e aperte enter: ");
-			sc = new Scanner(System.in);
+			System.out.printf("Digite a operação a realizar e aperte enter (use uma das seguintes palavras-chave assim como segue: triangulos,\n idades criancas,\n altura montanha russa,\n notas uni,\n tabela IMC,\n imposto de renda,\n operacoes matematicas,\n medias aritmetica/harmonica/ponderada,\n ordenacao crescente,\n verificacao de divisao exata e paridade numerica, ou\n encerramento): ");
 			chopt = sc.nextLine();
 			String helprstr[] = { chopt.substring(0, 1).toUpperCase(), chopt.substring(1, chopt.length()) };
 			fstr = helprstr[0].concat(helprstr[1]);
 			System.out.printf("%s | %s | %s | %s\n", "placeholder", "placeholder", fstr, mp.get(optlbl[0]));
 			// String optconst = Optset.values()[0].mode;
 			// System.out.printf(": %s\n",mp.get());
-			Runnable task = (fstr.equals(mp.get(optlbl[0]))) ? Main::metodoTriangulos : (fstr.equals(mp.get(optlbl[2]))) ? Main::metodoIdadesCriancas : (fstr.equals(mp.get(optlbl[4]))) ? Main::metodoMontanhaRussa : (fstr.equals(mp.get(optlbl[6]))) ? Main::metodoNotasUni : (fstr.equals(mp.get(optlbl[8]))) ? Main::metodoTabelaIMC : (fstr.equals(mp.get(optlbl[10]))) ? Main::metodoIR : (fstr.equals(mp.get(optlbl[12]))) ? Main::metodoOperacoesMat : (fstr.equals(mp.get(optlbl[14]))) ? Main::metodoMedias : (fstr.equals(mp.get(optlbl[16]))) ? Main::metodoOrdenacaoCres : (fstr.equals(mp.get(optlbl[18]))) ? Main::metodoObterMod : (fstr.equals(mp.get(optlbl[20]))) ? Main::metodoEncerramento : Main::metodoOpcaoInvalida;
+			task = (fstr.equals(mp.get(optlbl[0]))) ? Main::metodoTriangulos : (fstr.equals(mp.get(optlbl[2]))) ? Main::metodoIdadesCriancas : (fstr.equals(mp.get(optlbl[4]))) ? Main::metodoMontanhaRussa : (fstr.equals(mp.get(optlbl[6]))) ? Main::metodoNotasUni : (fstr.equals(mp.get(optlbl[8]))) ? Main::metodoTabelaIMC : (fstr.equals(mp.get(optlbl[10]))) ? Main::metodoIR : (fstr.equals(mp.get(optlbl[12]))) ? Main::metodoOperacoesMat : (fstr.equals(mp.get(optlbl[14]))) ? Main::metodoMedias : (fstr.equals(mp.get(optlbl[16]))) ? Main::metodoOrdenacaoCres : (fstr.equals(mp.get(optlbl[18]))) ? Main::metodoObterMod : (fstr.equals(mp.get(optlbl[20]))) ? Main::metodoEncerramento : Main::metodoOpcaoInvalida;
 			task.run();
-		} while (!fstr.equals(null));
+		} while (!fstr.equals(optlbl[21]));
 		sc.close();
 	}
 }
