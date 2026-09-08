@@ -45,13 +45,15 @@ public class Main {
 		System.out.printf("A seguir, forneça os números positivos a serem ordenados.\n");
 		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		for(int i=0;i<=2;i++) {
-			System.out.printf("Insira o número no índice %i: ",i);
+			System.out.printf("Insira o número no índice %d: ",i);
 			numspordenacao[i] = Math.abs(sc.nextDouble());
 		}
 		Arrays.sort(numspordenacao);
 		System.out.printf("Veja o array ordenado:\n");
 		for(int i=0;i<=2;i++) {
-			System.out.printf("%d\n",numspordenacao[i]);
+			System.out.printf("%.2f",numspordenacao[i]);
+			if(i!=2) System.out.printf("; ");
+			else System.out.printf(".\n");
 		}
 		sc.close();
 	}
@@ -75,7 +77,7 @@ public class Main {
 					System.out.printf("Digite aqui um número ou nota para ocupar a variável x%d da fórmula da média aritmética. ",(i+1));
 					elma[i] = dbsc.nextDouble();
 					notavalida = (elma[i]<0||elma[i]>10) ? false : true;
-					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.");
+					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.\n");
 					} while(notavalida==false);
 					eltot+=elma[i];
 				}
@@ -87,12 +89,12 @@ public class Main {
 				double[] elmh = new double[4];
 				tipomedia = "harmônica";
 				boolean notavalida;
-				for(int i=0;i<=2;i++){
+				for(int i=0;i<=3;i++){
 					do {
 					System.out.printf("Digite aqui um número ou nota para ocupar a variável x%d da fórmula da média harmônica. ",(i+1));
 					elmh[i] = dbsc.nextDouble();
 					notavalida = (elmh[i]<0||elmh[i]>10) ? false : true;
-					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.");
+					if(!notavalida) System.out.printf("Número inválido! Insira-o novamente.\n");
 					} while(notavalida==false);
 				}
 				double operandlen = elmh.length;
@@ -127,7 +129,7 @@ public class Main {
 				return;
 			}
 		}
-		System.out.printf("Resultado da média %s: %d",tipomedia,resul);
+		System.out.printf("Resultado aproximado da média %s: %.2f.\n",tipomedia,resul);
 		dbsc.close();
 		isc.close();
 	}
@@ -136,9 +138,9 @@ public class Main {
 		double result = 0;
 		String opstr, tipoperacao = new String();
 		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
-		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y, x[: ou /]d ou x%d) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração, divisão e módulo, SEM CARACTERES ENTRE OS OPERADORES: ");
+		System.out.printf("Este item é uma calculadora simples de dois valores. Insira sua operação (x+y, x*y, x-y, x[: ou /]y ou x%%y) e aperte enter.\n Operações suportadas: adição, multiplicação, subtração, divisão e módulo, SEM CARACTERES NÃO MATEMÁTICOS ENTRE OS OPERADORES: ");
 		opstr = sc.nextLine();
-		String[] parsdopstr = opstr.split("+|-|/|:|*|%");
+		String[] parsdopstr = opstr.split("\\+|-|/|:|\\*|%");
 		char opertr = (opstr.contains("+")) ? '+' : (opstr.contains("-")) ? '-' : (opstr.contains("/") || opstr.contains(":")) ? '/' : (opstr.contains("*")) ? '*' : (opstr.contains("%")) ? '%' : null; 
 		switch(opertr) {
 			case '+' -> {
@@ -150,7 +152,7 @@ public class Main {
 				result = Double.parseDouble(parsdopstr[0]) - Double.parseDouble(parsdopstr[1]);
 			}
 			case '/' -> {
-				double dividendo = Double.parseDouble(opstr.substring(2, 3));
+				double dividendo = Double.parseDouble(parsdopstr[1]);
 				if(dividendo==0) {
 					System.out.printf("Divisão por zero é igual a infinito positivo ou negativo, a depender do sinal do dividendo.");
 					break;
@@ -169,7 +171,7 @@ public class Main {
 				if(result==0) System.out.printf("O primeiro operando é divisível de forma exata pelo segundo, pois o resto da divisão é 0.\n");
 				else System.out.printf("O primeiro operando não é divisível de forma exata pelo segundo, pois o resto da divisão não é 0.\n");
 				String resultparid[] = {(operands[0] % 2 == 0 ? "par" : "ímpar"),(operands[1] % 2 == 0 ? "par" : "ímpar")};
-				String paridadenum = "O primeiro operando é ".concat(resultparid[0]).concat(", e o segundo, ").concat(resultparid[1]).concat(".");
+				String paridadenum = "O primeiro operando é ".concat(resultparid[0]).concat(", e o segundo, ").concat(resultparid[1]).concat(".\n");
 				System.out.printf(paridadenum);
 			}
 			default -> {
@@ -177,7 +179,7 @@ public class Main {
 			}
 		}
 		sc.close();
-		System.out.printf("Resultado da %s: %d",tipoperacao,result);
+		System.out.printf("Resultado do(a) %s: %.2f.\n",tipoperacao,result);
 	}
 
 	public static void metodoIR() {
@@ -185,14 +187,14 @@ public class Main {
 		double salan, salextraord, salferias, rendsaltot;
 		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Esta funcionalidade calcula seu salário anual bruto, décimo terceiro salário, salário de férias com base na média salarial bruta em um ano e desconto anual de IR (fonte: <www.gov.br/receitafederal/pt-br>, ano-calendário 2026). Insira sua média salarial no ano e então pressione enter: ");
-		salmensarred = new BigDecimal(String.valueOf(sc.nextDouble()));
+		salmensarred = new BigDecimal(String.valueOf(sc.nextDouble())).setScale(2, RoundingMode.UP);
 		double salmensarredb = salmensarred.doubleValue();
 		salan = salmensarredb * 12;
 		salferias = salmensarredb * 4/3;
 		salextraord = salmensarredb;
 		rendsaltot = salan+salferias+salextraord;
 		double totdescrend = (rendsaltot>55976.15) ? 10853.78 : (rendsaltot>=45012.61&&rendsaltot<=55976.15) ? 8054.97 : (rendsaltot>=33919.81&&rendsaltot<45012.60) ? 4679.67 : (rendsaltot>=28467.21&&rendsaltot<=33919.80) ? 2135.04 : 0;
-		System.out.printf("Resultados da simulação:\nSalário anual bruto: R$ %d\nDécimo terceiro salário: R$ %d\nSalário de mês-recesso: R$ %d\nTotal de rendimentos regulares tributáveis: R$ %d\nDesconto de IR de incidência anual: R$ %d.",salan,salextraord,salferias,rendsaltot,totdescrend);
+		System.out.printf("Resultados da simulação:\nSalário anual bruto: R$ %.2f\nDécimo terceiro salário: R$ %.2f\nSalário de mês-recesso: R$ %.2f\nTotal de rendimentos regulares tributáveis: R$ %.2f\nDesconto de IR de incidência anual: R$ %.2f.\n",salan,salextraord,salferias,rendsaltot,totdescrend);
 		sc.close();
 	}
 
