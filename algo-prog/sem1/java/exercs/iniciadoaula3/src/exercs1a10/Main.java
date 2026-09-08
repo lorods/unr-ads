@@ -42,11 +42,11 @@ public class Main {
 
 	public static void metodoOrdenacaoCres() {
 		double numspordenacao[] = new double[3];
-		System.out.printf("A seguir, forneça os números a serem ordenados.\n");
+		System.out.printf("A seguir, forneça os números positivos a serem ordenados.\n");
 		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		for(int i=0;i<=2;i++) {
 			System.out.printf("Insira o número no índice %i: ",i);
-			numspordenacao[i] = sc.nextDouble();
+			numspordenacao[i] = Math.abs(sc.nextDouble());
 		}
 		Arrays.sort(numspordenacao);
 		System.out.printf("Veja o array ordenado:\n");
@@ -185,7 +185,7 @@ public class Main {
 		double salan, salextraord, salferias, rendsaltot;
 		Scanner sc = new Scanner(new CloseShieldInputStream(System.in));
 		System.out.printf("Esta funcionalidade calcula seu salário anual bruto, décimo terceiro salário, salário de férias com base na média salarial bruta em um ano e desconto anual de IR (fonte: <www.gov.br/receitafederal/pt-br>, ano-calendário 2026). Insira sua média salarial no ano e então pressione enter: ");
-		salmensarred = new BigDecimal(sc.nextDouble()).setScale(2,RoundingMode.UP);
+		salmensarred = new BigDecimal(String.valueOf(sc.nextDouble()));
 		double salmensarredb = salmensarred.doubleValue();
 		salan = salmensarredb * 12;
 		salferias = salmensarredb * 4/3;
