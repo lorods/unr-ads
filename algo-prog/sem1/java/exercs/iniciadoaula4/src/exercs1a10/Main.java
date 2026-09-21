@@ -48,7 +48,7 @@ public class Main {
 			double[][] nota = new double[3][capacidade];
 			System.out.printf("Esta funcionalidade recebe até 1000 notas de três alunos, calcula sua média e classifica cada resultado em APROVADO ou REPROVADO. Você será perguntado sobre elas. Para sair dessa funcionalidade, responda a qualquer repetição com \"sair\".\n");
 			int i, j;
-			boolean s=false;
+			//boolean s=false;
 			for(i=0; i<4;i++) {
 				for(j=0;j<capacidade;j++) {
 					System.out.printf("Digite a nota: ");
@@ -92,7 +92,7 @@ public class Main {
 		case 4 -> {
 			int numt[] = new int[capacidadevet[3]], numimpar[] = {0};
 			int ctrimpar = 0, totimpar = 0;
-			String proxentr = new String();
+			//String proxentr = new String();
 			System.out.printf("Esta funcionalidade recebe até 1500 números inteiros e verifica quais deles são ímpares, mostrando estes e o valor que somados totalizam. Você será questionado sobre os valores agora. Para sair dessa funcionalidade, responda a qualquer repetição com \"sair\".\\n");
 			for(int i=0;i<capacidadevet[3];i++) {
 				System.out.printf("Digite o inteiro: ");
