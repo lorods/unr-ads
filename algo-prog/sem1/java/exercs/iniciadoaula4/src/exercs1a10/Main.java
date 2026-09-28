@@ -44,12 +44,13 @@ public class Main {
 		}
 		case 2 -> {
 			int capacidade = capacidadevet[1];
-			int[] comprimento = {0,0,0}, media={0,0,0}, tot={0,0,0};
+			double[] comprimento = {0,0,0}, tot={0,0,0};
 			double[][] nota = new double[3][capacidade];
-			System.out.printf("Esta funcionalidade recebe até 1000 notas de três alunos, calcula sua média e classifica cada resultado em APROVADO ou REPROVADO. Você será perguntado sobre elas. Para sair dessa funcionalidade, responda a qualquer repetição com \"sair\".\n");
+			double[] media={0,0,0};
+			System.out.printf("Esta funcionalidade recebe até 1000 notas de três alunos, calcula sua média e classifica cada resultado em APROVADO (media > 6), EM RECUPERAÇÃO (media >=4 e media <=6) ou REPROVADO (media < 4). Você será perguntado sobre elas. Para sair dessa funcionalidade, responda a qualquer repetição com \"sair\".\n");
 			int i, j;
 			//boolean s=false;
-			for(i=0; i<4;i++) {
+			for(i=0; i<3;i++) {
 				for(j=0;j<capacidade;j++) {
 					System.out.printf("Digite a nota: ");
 					String resp = scinf.nextLine();
@@ -62,7 +63,7 @@ public class Main {
 				comprimento[i] = j;
 				media[i] = tot[i]/comprimento[i];
 				String resulstr = (media[i]>6) ? "aprovado com média ".concat(String.valueOf(media[i])) : (media[i] >= 4) ? "em recuperação com média ".concat(String.valueOf(media[i])) : (media[i]<4) ? "reprovado com média ".concat(String.valueOf(media[i])) : "média desconhecida";
-				System.out.printf("Resultado do aluno %d: %s.",i,resulstr);
+				System.out.printf("Resultado do aluno %d: %s.\n",(i+1),resulstr);
 			}
 			double medsec = (tot[0]+tot[1]+tot[2])/3;
 			System.out.printf("Resultado da média secundária entre os três alunos: %.2f",medsec);
