@@ -12,7 +12,7 @@ public class Main {
 			System.out.printf("Insira um código entre 1 e 10 ou digite \"Sair\" e então tecle Enter: ");
 			rawchoice = choicesc.nextLine();
 			shortch = String.valueOf(rawchoice.charAt(0));
-			if (!shortch.matches("[a-Z]")) {
+			if (!shortch.matches("[a-zA-Z]")) {
 				choice = Integer.parseInt(rawchoice);
 				Scanner ativsc = new Scanner(System.in);
 				switch (choice) {
