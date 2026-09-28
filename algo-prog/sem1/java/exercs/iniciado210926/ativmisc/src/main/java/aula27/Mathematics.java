@@ -1,4 +1,4 @@
-package main.java;
+package main.java.aula27;
 
 public class Mathematics {
 	public int sum(int[] parc) {

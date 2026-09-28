@@ -1,4 +1,4 @@
-package main.java;
+package main.java.aula27;
 
 import java.util.Scanner;
 
