@@ -43,22 +43,26 @@ public class Main {
 							isnatural = false;
 							continue;
 						}
+						System.out.printf("chkdprim: %d\n", chkdprim);
 						isnatural = true;
-						double sqrtceil = Math.ceil(Math.sqrt(chkdprim));
-						// check for 2 and 3 special cases
+						// check for 2 and 3 special case
 						if (chkdprim == 2 || chkdprim == 3)
-							System.out.printf("O número %d é primo.\n.", chkdprim);
+							System.out.printf("O número %d é primo.\n", chkdprim);
 						// check for even numbers
 						else if (chkdprim % 2 == 0)
 							System.out.printf("O número %d não é primo.\n", chkdprim);
 						else {
+							double ceildsqrt = Math.ceil(Math.sqrt(chkdprim));
+							if (ceildsqrt % 2 == 0)
+								ceildsqrt++;
 							int mod;
-							for (int i = 5; i <= sqrtceil; i += 2) {
+							System.out.printf("got to line 57, sqrtceil: %.2f\n", ceildsqrt);
+							for (int i = 3; i <= ceildsqrt; i += 2) {
 								mod = chkdprim % i;
 								if (mod == 0) {
 									System.out.printf("O número %d não é primo.\n", chkdprim);
 									break;
-								} else if (i == sqrtceil)
+								} else if (i == ceildsqrt)
 									System.out.printf("O número %d é primo.\n", chkdprim);
 							}
 						}
@@ -68,53 +72,110 @@ public class Main {
 
 				}
 				case 8 -> {
-
+					int ftr[] = new int[2];
+					boolean isvalidftr;
+					do {
+						System.out.printf(
+								"Esta funcionalidade recebe dois números naturais (an > 0) e calcula a multiplicação entre eles com uma implementação de soma sucessiva.\nForneça a primeira parcela positiva: ");
+						ftr[0] = ativsc.nextInt();
+						System.out.printf("Forneça a segunda parcela positiva: ");
+						ftr[1] = ativsc.nextInt();
+						if (ftr[0] == 0 || ftr[1] == 0) {
+							System.out.printf("Um fator 0 é proibido nesta funcionalidade. Tente novamente.\n");
+							isvalidftr = false;
+							continue;
+						} else
+							isvalidftr = true;
+						if (ftr[0] < 0) {
+							System.out.printf(
+									"Você forneceu uma parcela negativa. Ela será transformada em positiva por meio de uma multiplicação por -1.\n");
+							ftr[0] *= -1;
+						}
+						if (ftr[1] < 0) {
+							System.out.printf(
+									"Você forneceu uma parcela negativa. Ela será transformada em positiva por meio de uma multiplicação por -1.\n");
+							ftr[1] *= -1;
+						}
+						int prod = 0;
+						for (int i = 1; i <= ftr[1]; i++) {
+							prod += ftr[0];
+						}
+						System.out.printf("O produto entre %d e %d é %d.\n", ftr[0], ftr[1], prod);
+					} while (!isvalidftr);
 				}
 				case 9 -> {
-
+					int base, exp = 0;
+					boolean isvalidbase;
+					do {
+						System.out.printf(
+								"Esta funcionalidade calcula uma potenciação x^y, com x > 0, utilizando apenas laços de repetição e multiplicação.\nForneça a base da potenciação: ");
+						base = ativsc.nextInt();
+						isvalidbase = (base != 0) ? true : false;
+						if (!isvalidbase) {
+							System.out.printf("Base zero é proibida nesta funcionalidade. Tente novamente.\n");
+							continue;
+						}
+						System.out.printf("Forneça o expoente da potenciação: ");
+						exp = ativsc.nextInt();
+						if (base < 0) {
+							System.out.printf(
+									"Você forneceu uma base negativa. Esta será multiplicada por -1 para virar positiva.\n");
+							base *= -1;
+						}
+						if (exp < 0) {
+							System.out.printf(
+									"Você forneceu um expoente negativo. Este será multiplicado por -1 para virar positivo.\n");
+							exp *= -1;
+						}
+					} while (!isvalidbase);
+					int result = (exp == 0) ? 1 : 0;
+					if (result != 1) {
+						result = base;
+						for (int i = 2; i <= exp; i++) {
+							result *= base;
+							System.out.printf("Resultado atual da potenciação: %d.\ni: %d\n", result, i);
+						}
+					}
+					System.out.printf("A %dª potência de base %d é %d.\n", exp, base, result);
 				}
 				case 10 -> {
-					int base, exp;
-					System.out.printf(
-							"Esta funcionalidade calcula uma potenciação x^y, com ambos > 0, utilizando apenas laços de repetição e soma.\nForneça a base da potenciação: ");
-					base = ativsc.nextInt();
-					System.out.printf("Forneça o expoente da potenciação: ");
-					exp = ativsc.nextInt();
-					if (base < 0) {
+					int base, exp = 0;
+					boolean isvalidbase;
+					do {
 						System.out.printf(
-								"Você forneceu uma base negativa. Esta será multiplicada por -1 para virar positiva.\n");
-						base *= -1;
-					}
-					if (exp < 0) {
-						System.out.printf(
-								"Você forneceu um expoente negativo. Este será multiplicado por -1 para virar positivo.\n");
-						base *= -1;
-					}
-					Scanner scanner = new Scanner(System.in);
-					System.out.println("Digite a base:");
-					base = scanner.nextInt();
-					System.out.println("Digite o expoente:");
-					int expoente = scanner.nextInt();
-
-					if (base > 0 && expoente > 0) {
-						int result = 1;
-						int i = 0;
-						while (i < expoente) {
-							int j = 0;
-							int temp = 0;
-							while (j < base) {
-								temp += result;
-								j++;
-							}
-							result = temp;
-							i++;
+								"Esta funcionalidade calcula uma potenciação x^y, com x > 0, utilizando apenas laços de repetição e soma.\nForneça a base da potenciação: ");
+						base = ativsc.nextInt();
+						isvalidbase = (base != 0) ? true : false;
+						if(!isvalidbase) {
+							System.out.printf("Base zero é proibida nesta funcionalidade. Tente novamente.\n");
+							continue;
 						}
-						System.out.println("O resultado da potência é: " + result);
-					} else {
-						System.out.println(
-								"Os valores digitados não são válidos. Eles devem ser positivos e maiores que zero.");
+						System.out.printf("Forneça o expoente da potenciação: ");
+						exp = ativsc.nextInt();
+						if (base < 0) {
+							System.out.printf(
+									"Você forneceu uma base negativa. Esta será multiplicada por -1 para virar positiva.\n");
+							base *= -1;
+						}
+						if (exp < 0) {
+							System.out.printf(
+									"Você forneceu um expoente negativo. Este será multiplicado por -1 para virar positivo.\n");
+							exp *= -1;
+						}
+					} while (!isvalidbase);
+					int result = (exp == 0) ? 1 : 0, curftr = base;
+					if (result != 1) {
+						result = base;
+						for (int i = 2; i <= exp; i++) {
+							for (int j = 1; j < base; j++) {
+								result += curftr;
+								System.out.printf("Resultado atual da potenciação: %d.\n (i, j): (%d, %d)\n", result, i,
+										j);
+							}
+							curftr = result;
+						}
 					}
-
+					System.out.printf("A %dª potência de base %d é %d.\n", exp, base, result);
 				}
 				}
 				ativsc.close();
