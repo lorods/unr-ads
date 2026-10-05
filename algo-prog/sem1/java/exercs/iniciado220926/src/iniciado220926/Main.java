@@ -69,7 +69,17 @@ public class Main {
 					} while (isnatural == false);
 				}
 				case 7 -> {
-
+					int amount;
+					System.out.printf("Esta funcionalidade aceita uma quantidade de números informada por você e obtém:\n1) quantos números são primos e/ou maiores do que 1000,\n2) qual o maior e menor números primos digitados, e\n3) a média aritmética dos números primos digitados.\n");
+					do{
+						amount = ativsc.nextInt();
+						if(amount<1) System.out.printf("A quantidade mínima necessária de números fornecidos é 1.\n");
+					}while(amount<1);
+					int[] collectd = new int[amount];
+					for(int i=0;i<amount;i++) {
+						System.out.printf("Forneça o valor %d: ",(i+1));
+						collectd[i] = ativsc.nextInt();
+					}
 				}
 				case 8 -> {
 					int ftr[] = new int[2];
