@@ -1,5 +1,7 @@
 package main.java.aula27;
 
+import java.math.BigDecimal;
+
 public class Mathematics {
 	public int sum(int[] parc) {
 		return 0;
@@ -13,7 +15,7 @@ public class Mathematics {
 		return 0;
 	}
 	
-	public int divide(int[] operand) {
-		return 0;
+	public BigDecimal divide(BigDecimal[] operand) {
+		return BigDecimal.ZERO;
 	}
 }
