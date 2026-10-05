@@ -4,18 +4,34 @@ import java.math.BigDecimal;
 
 public class Mathematics {
 	public int sum(int[] parc) {
-		return 0;
+		int res=0;
+		for(int i=0;i<parc.length;i++) {
+			res+=parc[i];
+		}
+		return res;
 	}
 	
 	public int subtract(int[] parcsub) {
-		return 0;
+		int res=parcsub[0];
+		for(int i=1;i<parcsub.length;i++) {
+			res-=parcsub[i];
+		}
+		return res;
 	}
 	
 	public int multiply(int[] factr) {
-		return 0;
+		int res=factr[0];
+		for(int i=1;i<factr.length;i++) {
+			res*=factr[i];
+		}
+		return res;
 	}
 	
 	public BigDecimal divide(BigDecimal[] operand) {
-		return BigDecimal.ZERO;
+		BigDecimal res=operand[0];
+		for(int i=1;i<operand.length;i++) {
+			res = res.divide(operand[i]);
+		}
+		return res;
 	}
 }
