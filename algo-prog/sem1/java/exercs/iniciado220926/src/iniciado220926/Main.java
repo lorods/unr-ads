@@ -1,6 +1,7 @@
 package iniciado220926;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -35,7 +36,21 @@ public class Main {
 
 				}
 				case 5 -> {
-
+					int proglen;
+					BigDecimal progratio;
+					BigDecimal eltotal = BigDecimal.ZERO;
+					System.out.printf("Esta funcionalidade lê um número finito n, um termo inicial a1 e uma razão de progressão r e calcula seus termos de 1 a n, além de seu somatório.\nForneça o tamanho (capacidade de elementos) da progressão — caso forneça um número negativo, este será convertido no inverso positivo; ao fornecer 1 ou 0, um ou dois elemento(s) extra(s) será(ão) acrescentado(s) para formar uma progressão mínima: ");
+					proglen = ativsc.nextInt();
+					if(proglen==0||proglen==1) proglen=2;  
+					ArrayList<BigDecimal> prog = new ArrayList<BigDecimal>(proglen);
+					System.out.printf("Forneça o primeiro elemento enumerado na progressão: ");
+					prog.add(ativsc.nextBigDecimal());
+					System.out.printf("Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
+					progratio = ativsc.nextBigDecimal();
+					for(int i=1;i<proglen; i++) {
+						prog.add(prog.get((i-1)).add(progratio));
+						eltotal.add(prog.get(i));
+					}					
 				}
 				case 6 -> {
 					System.out.printf(
@@ -83,7 +98,7 @@ public class Main {
 						if (amount < 1)
 							System.out.printf("A quantidade mínima necessária de números fornecidos é 1.\n");
 					} while (amount < 1);
-					int[] collectd = new int[amount], colgreat, colprime = new int[0];
+					int[] collectd = new int[amount], colgreat = new int[0], colprime = new int[0];
 					int primetot = 0;
 					boolean isprime;
 					int[] colgreathelpr = new int[0], colprimehelpr = new int[0];
@@ -128,7 +143,17 @@ public class Main {
 						}
 					}
 					int[] sortdprime = getBounds(colprime); 
-					BigDecimal aritavg = new BigDecimal(primetot).divide(new BigDecimal(collectd.length));
+					BigDecimal aritavg = new BigDecimal(primetot).divide(new BigDecimal(colprime.length));
+					System.out.printf("Estatísticas desejadas em relação aos números fornecidos:\nNúmeros primos:\n");
+					for(int prime : colprime) {
+						System.out.printf("%d\n",prime);
+					}
+					System.out.printf("\n———\nNúmeros maiores que 1000:\n");
+					for(int greatest : colgreat) {
+						System.out.printf("%d\n",greatest);
+					}
+					System.out.printf("\n———\nMenor e maior primo, respectivamente: %d e %d\n",sortdprime[0],sortdprime[1]);
+					System.out.printf("Média aritmética dos números primos localizados: %s\n———\\n\n",aritavg.toPlainString());
 				}
 				case 8 -> {
 					int ftr[] = new int[2];
