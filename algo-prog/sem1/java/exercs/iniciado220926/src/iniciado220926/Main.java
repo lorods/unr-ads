@@ -1,9 +1,15 @@
 package iniciado220926;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
-
+	public static int[] getBounds(int[] sortd) {
+		Arrays.sort(sortd);
+		return new int[] {sortd[0], sortd[(sortd.length-1)]};
+	}
+	
 	public static void main(String[] args) {
 		Scanner choicesc = new Scanner(System.in);
 		String rawchoice, shortch;
@@ -70,16 +76,59 @@ public class Main {
 				}
 				case 7 -> {
 					int amount;
-					System.out.printf("Esta funcionalidade aceita uma quantidade de números informada por você e obtém:\n1) quantos números são primos e/ou maiores do que 1000,\n2) qual o maior e menor números primos digitados, e\n3) a média aritmética dos números primos digitados.\n");
-					do{
+					System.out.printf(
+							"Esta funcionalidade aceita uma quantidade de números informada por você e obtém:\n1) quantos números são primos e/ou maiores do que 1000,\n2) qual o maior e menor números primos digitados, e\n3) a média aritmética dos números primos digitados.\n");
+					do {
 						amount = ativsc.nextInt();
-						if(amount<1) System.out.printf("A quantidade mínima necessária de números fornecidos é 1.\n");
-					}while(amount<1);
-					int[] collectd = new int[amount];
-					for(int i=0;i<amount;i++) {
-						System.out.printf("Forneça o valor %d: ",(i+1));
+						if (amount < 1)
+							System.out.printf("A quantidade mínima necessária de números fornecidos é 1.\n");
+					} while (amount < 1);
+					int[] collectd = new int[amount], colgreat, colprime = new int[0];
+					int primetot = 0;
+					boolean isprime;
+					int[] colgreathelpr = new int[0], colprimehelpr = new int[0];
+					for (int i = 0; i < amount; i++) {
+						isprime = false;
+						System.out.printf("Forneça o valor %d: ", (i + 1));
 						collectd[i] = ativsc.nextInt();
+						// check for 2 and 3 special case
+						if (collectd[i] == 2 || collectd[i] == 3) {
+							System.out.printf("O número %d é primo.\n", collectd[i]);
+							isprime = true;
+						}
+						// check for even numbers
+						else if (collectd[i] % 2 == 0)
+							System.out.printf("O número %d não é primo.\n", collectd[i]);
+						else {
+							double ceildsqrt = Math.ceil(Math.sqrt(collectd[i]));
+							if (ceildsqrt % 2 == 0)
+								ceildsqrt++;
+							int mod;
+							System.out.printf("got to line 57, sqrtceil: %.2f\n", ceildsqrt);
+							for (int j = 3; j <= ceildsqrt; j += 2) {
+								mod = collectd[i] % j;
+								if (mod == 0) {
+									System.out.printf("O número %d não é primo.\n", collectd[i]);
+									break;
+								} else if (j == ceildsqrt)
+									System.out.printf("O número %d é primo.\n", collectd[i]);
+								isprime = true;
+							}
+						}
+						if (collectd[i] > 1000) {
+							colgreathelpr = (colgreathelpr.length>0) ? Arrays.copyOf(colgreathelpr, (colgreathelpr.length+1)) : new int[1];
+							colgreathelpr[(colgreathelpr.length-1)] = collectd[i];
+							colgreat = Arrays.copyOf(colgreathelpr,colgreathelpr.length);
+						}
+						if (isprime) {
+							colprimehelpr = (colprimehelpr.length>0) ? Arrays.copyOf(colprimehelpr, (colprimehelpr.length+1)) : new int[1];
+							colprimehelpr[(colprimehelpr.length-1)] = collectd[i];
+							colprime = Arrays.copyOf(colprimehelpr, colprimehelpr.length);
+							primetot += collectd[i];
+						}
 					}
+					int[] sortdprime = getBounds(colprime); 
+					BigDecimal aritavg = new BigDecimal(primetot).divide(new BigDecimal(collectd.length));
 				}
 				case 8 -> {
 					int ftr[] = new int[2];
@@ -156,7 +205,7 @@ public class Main {
 								"Esta funcionalidade calcula uma potenciação x^y, com x > 0, utilizando apenas laços de repetição e soma.\nForneça a base da potenciação: ");
 						base = ativsc.nextInt();
 						isvalidbase = (base != 0) ? true : false;
-						if(!isvalidbase) {
+						if (!isvalidbase) {
 							System.out.printf("Base zero é proibida nesta funcionalidade. Tente novamente.\n");
 							continue;
 						}
