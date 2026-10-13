@@ -8,9 +8,9 @@ import java.util.Scanner;
 public class Main {
 	public static int[] getBounds(int[] sortd) {
 		Arrays.sort(sortd);
-		return new int[] {sortd[0], sortd[(sortd.length-1)]};
+		return new int[] { sortd[0], sortd[(sortd.length - 1)] };
 	}
-	
+
 	public static void main(String[] args) {
 		Scanner choicesc = new Scanner(System.in);
 		String rawchoice, shortch;
@@ -24,33 +24,179 @@ public class Main {
 				Scanner ativsc = new Scanner(System.in);
 				switch (choice) {
 				case 1 -> {
-
+					
 				}
 				case 2 -> {
+					BigDecimal balance = BigDecimal.ZERO;
+					System.out.printf("Esta funcionalidade simula um terminal bancário. ");
+					int ch;
+					BigDecimal deposit, withdrawal;
+					for (boolean shquit=false;!shquit;) {
+						deposit = BigDecimal.ZERO;
+						withdrawal = BigDecimal.ZERO;
+						System.out.printf("Escolha entre as opções 1 — Saldo, 2 — Saque, 3 — Depósito e 4 — Sair: ");
+						ch = ativsc.nextInt();
+						switch (ch) {
+						case 4 -> shquit=true;
+						case 1 -> {
+							System.out.printf("Caro cliente, seu saldo atual é R$ %s.", balance.toPlainString());
+						}
+						case 2 -> {
+							for (boolean proceed = false; !proceed;) {
+								System.out.printf(
+										"Prezado cliente, qual o valor que deseja sacar de sua conta? Insira ao lado: ");
+								withdrawal = ativsc.nextBigDecimal();
+								if (withdrawal.compareTo(balance) == 1) {
+									System.out.printf("Erro: saldo é insuficiente para quantia de saque desejada.\n");
+									continue;
+								}
+								else if(withdrawal.compareTo(BigDecimal.ZERO)<=0) {
+									System.out.printf("Erro: uma quantia de saque negativa caracteriza um depósito. Você deseja depositar algum valor em sua conta? Caso positivo, escolha a opção 3 (depósito) a seguir.\n");
+									break;		
+								}
+								balance = balance.subtract(withdrawal);
+								proceed=true;
+							}
+						}
+						case 3 -> {
+							for (boolean proceed = false; !proceed;) {
+								System.out.printf(
+										"Prezado cliente, qual o valor que seja depositar em sua conta? Insira ao lado: ");
+								deposit = ativsc.nextBigDecimal();
+								if (deposit.compareTo(BigDecimal.ZERO) == -1) {
+									System.out.printf(
+											"O depósito mínimo é de R$ 0,01. Para cancelar esta operação, digite 0 a seguir.\n");
+									continue;
 
+								} else if (!(deposit.compareTo(BigDecimal.ZERO) == 1))
+									balance.add(deposit);
+								proceed = true;
+							}
+						}
+						default -> {
+							System.out.printf("Opção digitada não é válida!");
+						}
+						}
+						if (ch != 1)
+							System.out.printf("Atualmente, seu saldo é de R$ %s.\n", balance.toPlainString());
+					}
 				}
 				case 3 -> {
-
+					int clsize;
+					final BigDecimal gradelen = new BigDecimal(3);
+					boolean isvalidclsize = true, isvalidgrade = true;
+					System.out.printf(
+							"Bem-vindo, professor. A fim de calcular a nota média individual, definir status de aprovação e obter nota média global e porcentagem de alunos aprovados e reprovados a partir de três notas de todos os seus alunos, insira ao lado o tamanho de sua turma (entradas inválidas: tamanho de turma igual ou inferior a zero, nota inferior a zero): ");
+					do {
+						clsize = ativsc.nextInt();
+						if (clsize <= 0) {
+							isvalidclsize = false;
+							System.out.printf(
+									"Tamanho de turma igual ou inferior a zero não é permitido. Tente novamente.\n");
+							continue;
+						}
+					} while (!isvalidclsize);
+					ArrayList<BigDecimal[]> typdgrade = new ArrayList<BigDecimal[]>(clsize);
+					enum Situacao {
+						REPROVADO, APROVADO
+					}
+					System.out.printf(
+							"Professor, agora forneça a nota mínima necessária para aprovação. Se fornecer uma nota igual ou inferior a zero, a mínima considerada será seis: ");
+					BigDecimal gradereq = ativsc.nextBigDecimal();
+					if (!(gradereq.compareTo(BigDecimal.ZERO) == 1))
+						gradereq = new BigDecimal(6);
+					Situacao[] apprstatus = new Situacao[3];
+					BigDecimal[] studentavg = new BigDecimal[3];
+					BigDecimal[] gradehelpr = new BigDecimal[3];
+					for (int i = 0; i < clsize; i++) {
+						System.out.printf("Forneça as notas do aluno %d.\n", (i + 1));
+						for (int j = 0; j < 3; j++) {
+							do {
+								System.out.printf("Nota %d: ", (j + 1));
+								gradehelpr[j] = ativsc.nextBigDecimal();
+								if (gradehelpr[j].compareTo(BigDecimal.ZERO) == -1) {
+									isvalidgrade = false;
+									System.out.printf(
+											"Você inseriu uma nota negativa, porém a mínima é zero. Tente novamente.\n");
+									continue;
+								}
+							} while (!isvalidgrade);
+							studentavg[i].add(gradehelpr[j]);
+						}
+						typdgrade.set(i, gradehelpr);
+						studentavg[i] = studentavg[i].divide(gradelen);
+						apprstatus[i] = (studentavg[i].compareTo(gradereq) >= 0) ? Situacao.APROVADO
+								: Situacao.REPROVADO;
+					}
+					BigDecimal classavg = BigDecimal.ZERO;
+					for (BigDecimal indavg : studentavg) {
+						classavg.add(indavg);
+					}
+					BigDecimal bigclsize = new BigDecimal(clsize);
+					classavg = classavg.divide(bigclsize);
+					System.out.printf("Estatísticas consolidadas:\n");
+					int aprovtotal = 0, reprovtotal = 0;
+					boolean isappr;
+					for (int i = 0; i < clsize; i++) {
+						System.out.printf("===Aluno (%d)===\n", (i + 1));
+						System.out.printf("Média do aluno: %s,\n", studentavg[i].toPlainString());
+						if (apprstatus[i].equals(Situacao.APROVADO)) {
+							aprovtotal++;
+							isappr = true;
+						} else {
+							reprovtotal++;
+							isappr = false;
+						}
+						System.out.printf("status de aprovação: %s.\n\n", isappr ? "aprovado" : "reprovado");
+					}
+					System.out.printf("Média da turma inteira: %s.\n", classavg.toPlainString());
+					final BigDecimal bighundred = new BigDecimal(100);
+					BigDecimal apprperc = new BigDecimal(aprovtotal).divide(bigclsize).multiply(bighundred),
+							repprperc = new BigDecimal(reprovtotal).divide(bigclsize).multiply(bighundred);
+					System.out.printf("Percentual de alunos aprovados: %s.\nPercentual de alunos reprovados: %s.\n\n",
+							apprperc.toPlainString(), repprperc.toPlainString());
 				}
 				case 4 -> {
-
+					int[] typdnum = new int[90000];
+					System.out.printf(
+							"Este algoritmo recebe até 90000 números inteiros e verifica o maior e menor digitados. Você será indagado sobre eles agora. Para interromper a leitura, digite \"sair\", sem aspas.\n");
+					String typewbuff;
+					for (int i = 0; i < typdnum.length; i++) {
+						System.out.printf("Forneça o número para ocupar o registro %d: ", (i + 1));
+						typewbuff = ativsc.nextLine().toLowerCase();
+						if (typewbuff.equals("sair"))
+							break;
+						typdnum[i] = Integer.parseInt(typewbuff);
+					}
+					int[] sortdtypd = typdnum;
+					Arrays.sort(sortdtypd);
+					System.out.printf("Seguem o menor e maior inteiros digitados: %d e %d.", sortdtypd[0],
+							sortdtypd[(sortdtypd.length - 1)]);
 				}
 				case 5 -> {
 					int proglen;
 					BigDecimal progratio;
 					BigDecimal eltotal = BigDecimal.ZERO;
-					System.out.printf("Esta funcionalidade lê um número finito n, um termo inicial a1 e uma razão de progressão r e calcula seus termos de 1 a n, além de seu somatório.\nForneça o tamanho (capacidade de elementos) da progressão — caso forneça um número negativo, este será convertido no inverso positivo; ao fornecer 1 ou 0, um ou dois elemento(s) extra(s) será(ão) acrescentado(s) para formar uma progressão mínima: ");
+					System.out.printf(
+							"Esta funcionalidade lê um número finito n, um termo inicial a1 e uma razão de progressão r e calcula seus termos de 1 a n, além de seu somatório.\nForneça o tamanho (capacidade de elementos) da progressão — caso forneça 1 ou 0, um ou dois elemento(s) extra(s)r será(ão) acrescentado(s) para formar uma progressão mínima: ");
 					proglen = ativsc.nextInt();
-					if(proglen==0||proglen==1) proglen=2;  
-					ArrayList<BigDecimal> prog = new ArrayList<BigDecimal>(proglen);
+					if (proglen == 0 || proglen == 1)
+						proglen = 2;
+					ArrayList<BigDecimal> prog = new ArrayList<BigDecimal>();
 					System.out.printf("Forneça o primeiro elemento enumerado na progressão: ");
 					prog.add(ativsc.nextBigDecimal());
-					System.out.printf("Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
+					System.out.printf(
+							"Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
 					progratio = ativsc.nextBigDecimal();
-					for(int i=1;i<proglen; i++) {
-						prog.add(prog.get((i-1)).add(progratio));
+					for (int i = 1; i < proglen; i++) {
+						prog.add(prog.get((i - 1)).add(progratio));
 						eltotal.add(prog.get(i));
-					}					
+					}
+					System.out.printf("Termos da progressão:\n%s", prog.get(0).toPlainString());
+					for (BigDecimal el : prog.subList(1, proglen)) {
+						System.out.printf(", %s", el.toPlainString());
+					}
+					System.out.printf(".\nSomatório dos elementos da progressão: %s.\n", eltotal.toPlainString());
 				}
 				case 6 -> {
 					System.out.printf(
@@ -131,29 +277,35 @@ public class Main {
 							}
 						}
 						if (collectd[i] > 1000) {
-							colgreathelpr = (colgreathelpr.length>0) ? Arrays.copyOf(colgreathelpr, (colgreathelpr.length+1)) : new int[1];
-							colgreathelpr[(colgreathelpr.length-1)] = collectd[i];
-							colgreat = Arrays.copyOf(colgreathelpr,colgreathelpr.length);
+							colgreathelpr = (colgreathelpr.length > 0)
+									? Arrays.copyOf(colgreathelpr, (colgreathelpr.length + 1))
+									: new int[1];
+							colgreathelpr[(colgreathelpr.length - 1)] = collectd[i];
+							colgreat = Arrays.copyOf(colgreathelpr, colgreathelpr.length);
 						}
 						if (isprime) {
-							colprimehelpr = (colprimehelpr.length>0) ? Arrays.copyOf(colprimehelpr, (colprimehelpr.length+1)) : new int[1];
-							colprimehelpr[(colprimehelpr.length-1)] = collectd[i];
+							colprimehelpr = (colprimehelpr.length > 0)
+									? Arrays.copyOf(colprimehelpr, (colprimehelpr.length + 1))
+									: new int[1];
+							colprimehelpr[(colprimehelpr.length - 1)] = collectd[i];
 							colprime = Arrays.copyOf(colprimehelpr, colprimehelpr.length);
 							primetot += collectd[i];
 						}
 					}
-					int[] sortdprime = getBounds(colprime); 
+					int[] sortdprime = getBounds(colprime);
 					BigDecimal aritavg = new BigDecimal(primetot).divide(new BigDecimal(colprime.length));
 					System.out.printf("Estatísticas desejadas em relação aos números fornecidos:\nNúmeros primos:\n");
-					for(int prime : colprime) {
-						System.out.printf("%d\n",prime);
+					for (int prime : colprime) {
+						System.out.printf("%d\n", prime);
 					}
 					System.out.printf("\n———\nNúmeros maiores que 1000:\n");
-					for(int greatest : colgreat) {
-						System.out.printf("%d\n",greatest);
+					for (int greatest : colgreat) {
+						System.out.printf("%d\n", greatest);
 					}
-					System.out.printf("\n———\nMenor e maior primo, respectivamente: %d e %d\n",sortdprime[0],sortdprime[1]);
-					System.out.printf("Média aritmética dos números primos localizados: %s\n———\\n\n",aritavg.toPlainString());
+					System.out.printf("\n———\nMenor e maior primo, respectivamente: %d e %d\n", sortdprime[0],
+							sortdprime[1]);
+					System.out.printf("Média aritmética dos números primos localizados: %s\n———\\n\n",
+							aritavg.toPlainString());
 				}
 				case 8 -> {
 					int ftr[] = new int[2];
