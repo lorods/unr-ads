@@ -2,6 +2,7 @@ package iniciado220926;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -14,12 +15,13 @@ public class Main {
 
 	public static void main(String[] args) throws IOException {
 		Scanner choicesc = new Scanner(System.in), ativsc = new Scanner(System.in);
-		String rawchoice = new String(), shortch;
+		String rawchoice = new String(), shortch, endstr;
 		int choice;
 		do {
 			System.out.printf("Insira um código entre 1 e 10 ou digite \"Sair\" e então tecle Enter: ");
 			rawchoice = choicesc.nextLine();
 			shortch = String.valueOf(rawchoice.charAt(0));
+			endstr = rawchoice.toLowerCase();
 			if (!shortch.matches("[a-zA-Z]")) {
 				choice = Integer.parseInt(rawchoice);
 				switch (choice) {
@@ -36,13 +38,13 @@ public class Main {
 					prod = (lfactr == 0 || rfactr == 0) ? 0 : lfactr;
 					int targetfactr = (rfactr < 0) ? rfactr * (-1) : rfactr;
 					if (prod != 0) {
-						if((rfactr<0&&lfactr<0)||(rfactr<0&&lfactr>0)) {
-							lfactr*=-1;
-							prod=lfactr;
+						if ((rfactr < 0 && lfactr < 0) || (rfactr < 0 && lfactr > 0)) {
+							lfactr *= -1;
+							prod = lfactr;
 						}
 						for (int i = 2; i <= targetfactr; i++) {
 							prod += lfactr;
-						}		
+						}
 					}
 					System.out.printf("O produto %d * %d é %d.\n", origlfact, origrfact, prod);
 				}
@@ -67,7 +69,9 @@ public class Main {
 										"Prezado cliente, qual o valor que deseja sacar de sua conta? Insira ao lado: ");
 								withdrawal = ativsc.nextBigDecimal();
 								if (withdrawal.compareTo(balance) == 1) {
-									System.out.printf("Erro: saldo (R$ %s) é insuficiente para quantia de saque desejada (R$ %s).\n",balance.toPlainString(),withdrawal.toPlainString());
+									System.out.printf(
+											"Erro: saldo (R$ %s) é insuficiente para quantia de saque desejada (R$ %s).\n",
+											balance.toPlainString(), withdrawal.toPlainString());
 									continue;
 								} else if (withdrawal.compareTo(BigDecimal.ZERO) <= 0) {
 									System.out.printf(
@@ -81,15 +85,16 @@ public class Main {
 						case 3 -> {
 							for (boolean proceed = false; !proceed;) {
 								System.out.printf(
-										"Prezado cliente, qual o valor que seja depositar em sua conta? Insira ao lado: ");
+										"Prezado cliente, qual o valor que deseja depositar em sua conta? Insira ao lado: ");
 								deposit = ativsc.nextBigDecimal();
 								if (deposit.compareTo(BigDecimal.ZERO) == -1) {
 									System.out.printf(
 											"O depósito mínimo é de R$ 0,01. Para cancelar esta operação, digite 0 a seguir.\n");
 									continue;
 
-								} else if (deposit.compareTo(BigDecimal.ZERO)==1)
-									balance.add(deposit);
+								} else if (deposit.compareTo(BigDecimal.ZERO) == 1) {
+									balance = balance.add(deposit);
+								}
 								proceed = true;
 							}
 						}
@@ -104,17 +109,19 @@ public class Main {
 				case 3 -> {
 					int clsize;
 					final BigDecimal gradelen = new BigDecimal(3);
-					boolean isvalidclsize = true, isvalidgrade = true;
-					System.out.printf(
-							"Bem-vindo, professor. A fim de calcular a nota média individual, definir status de aprovação e obter nota média global e porcentagem de alunos aprovados e reprovados a partir de três notas de todos os seus alunos, insira ao lado o tamanho de sua turma (entradas inválidas: tamanho de turma igual ou inferior a zero, nota inferior a zero): ");
+					boolean isvalidclsize, isvalidgrade;
+					System.out.printf("Bem-vindo, professor. ");
 					do {
+						System.out.printf(
+								"A fim de calcular a nota média individual, definir status de aprovação e obter nota média global e porcentagem de alunos aprovados e reprovados a partir de três notas de todos os seus alunos, insira ao lado o tamanho de sua turma (entradas inválidas: tamanho de turma igual ou inferior a zero, nota inferior a zero): ");
 						clsize = ativsc.nextInt();
 						if (clsize <= 0) {
 							isvalidclsize = false;
 							System.out.printf(
 									"Tamanho de turma igual ou inferior a zero não é permitido. Tente novamente.\n");
 							continue;
-						}
+						} else
+							isvalidclsize = true;
 					} while (!isvalidclsize);
 					ArrayList<BigDecimal[]> typdgrade = new ArrayList<BigDecimal[]>(clsize);
 					enum Situacao {
@@ -125,10 +132,12 @@ public class Main {
 					BigDecimal gradereq = ativsc.nextBigDecimal();
 					if (!(gradereq.compareTo(BigDecimal.ZERO) == 1))
 						gradereq = new BigDecimal(6);
-					Situacao[] apprstatus = new Situacao[3];
-					BigDecimal[] studentavg = new BigDecimal[3];
+					Situacao[] apprstatus = new Situacao[clsize];
+					BigDecimal[] studentavg = new BigDecimal[clsize];
 					BigDecimal[] gradehelpr = new BigDecimal[3];
 					for (int i = 0; i < clsize; i++) {
+						if (studentavg[i] == null)
+							studentavg[i] = BigDecimal.ZERO;
 						System.out.printf("Forneça as notas do aluno %d.\n", (i + 1));
 						for (int j = 0; j < 3; j++) {
 							do {
@@ -139,26 +148,35 @@ public class Main {
 									System.out.printf(
 											"Você inseriu uma nota negativa, porém a mínima é zero. Tente novamente.\n");
 									continue;
-								}
+								} else
+									isvalidgrade = true;
 							} while (!isvalidgrade);
-							studentavg[i].add(gradehelpr[j]);
+							studentavg[i] = studentavg[i].add(gradehelpr[j]);
 						}
-						typdgrade.set(i, gradehelpr);
-						studentavg[i] = studentavg[i].divide(gradelen);
+						typdgrade.add(gradehelpr);
+						System.out.printf("\nAbout to divide %s by %s.\n", studentavg[i].toPlainString(),
+								gradelen.toPlainString());
+						try {
+							studentavg[i] = studentavg[i].divide(gradelen);
+						} catch (ArithmeticException ae) {
+							studentavg[i] = studentavg[i].divide(gradelen, 2, RoundingMode.HALF_UP);
+						}
+						System.out.printf("\nJust divided %s by %s.\n", studentavg[i].toPlainString(),
+								gradelen.toPlainString());
 						apprstatus[i] = (studentavg[i].compareTo(gradereq) >= 0) ? Situacao.APROVADO
 								: Situacao.REPROVADO;
 					}
 					BigDecimal classavg = BigDecimal.ZERO;
 					for (BigDecimal indavg : studentavg) {
-						classavg.add(indavg);
+						classavg = classavg.add(indavg);
 					}
 					BigDecimal bigclsize = new BigDecimal(clsize);
 					classavg = classavg.divide(bigclsize);
-					System.out.printf("Estatísticas consolidadas:\n");
+					System.out.printf("\nEstatísticas consolidadas:\n\n");
 					int aprovtotal = 0, reprovtotal = 0;
 					boolean isappr;
 					for (int i = 0; i < clsize; i++) {
-						System.out.printf("===Aluno (%d)===\n", (i + 1));
+						System.out.printf("===Aluno %d===\n", (i + 1));
 						System.out.printf("Média do aluno: %s,\n", studentavg[i].toPlainString());
 						if (apprstatus[i].equals(Situacao.APROVADO)) {
 							aprovtotal++;
@@ -173,24 +191,36 @@ public class Main {
 					final BigDecimal bighundred = new BigDecimal(100);
 					BigDecimal apprperc = new BigDecimal(aprovtotal).divide(bigclsize).multiply(bighundred),
 							repprperc = new BigDecimal(reprovtotal).divide(bigclsize).multiply(bighundred);
-					System.out.printf("Percentual de alunos aprovados: %s.\nPercentual de alunos reprovados: %s.\n\n",
+					System.out.printf(
+							"Fatia de alunos aprovados (em porcentagem): %s.\nFatia de alunos reprovados (em porcentagem): %s.\n\n",
 							apprperc.toPlainString(), repprperc.toPlainString());
 				}
 				case 4 -> {
 					int[] typdnum = new int[90000];
+					boolean shquit = false;
 					System.out.printf(
-							"Este algoritmo recebe até 90000 números inteiros e verifica o maior e menor digitados. Você será indagado sobre eles agora. Para interromper a leitura, digite \"sair\", sem aspas.\n");
+							"Este algoritmo recebe até 90000 números inteiros e verifica o maior e menor digitados. Você será indagado sobre eles agora. Para interromper a leitura, digite \"continuar\", sem aspas.\n");
 					String typewbuff;
-					for (int i = 0; i < typdnum.length; i++) {
-						System.out.printf("Forneça o número para ocupar o registro %d: ", (i + 1));
-						typewbuff = ativsc.nextLine().toLowerCase();
-						if (typewbuff.equals("sair"))
-							break;
-						typdnum[i] = Integer.parseInt(typewbuff);
+					for (int i = 0; i < typdnum.length && !shquit; i++) {
+						for (;;) {
+							System.out.printf("Forneça o número para ocupar o registro %d: ", (i + 1));
+							typewbuff = ativsc.nextLine();
+							typewbuff = typewbuff.toLowerCase();
+							if (typewbuff.equals("continuar")) {
+								shquit=true;
+								break;
+							} else if (typewbuff.matches("-?\\d+")) {
+								typdnum[i] = Integer.parseInt(typewbuff);
+								break;
+							} else {
+								System.out.printf("Valor inserido não numérico. Tente novamente.\n");
+								continue;
+							}
+						}
 					}
 					int[] sortdtypd = typdnum;
 					Arrays.sort(sortdtypd);
-					System.out.printf("Seguem o menor e maior inteiros digitados: %d e %d.", sortdtypd[0],
+					System.out.printf("Seguem o menor e maior inteiros digitados: %d e %d.\n\n", sortdtypd[0],
 							sortdtypd[(sortdtypd.length - 1)]);
 				}
 				case 5 -> {
@@ -208,15 +238,16 @@ public class Main {
 					System.out.printf(
 							"Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
 					progratio = ativsc.nextBigDecimal();
+					eltotal=prog.get(0);
 					for (int i = 1; i < proglen; i++) {
 						prog.add(prog.get((i - 1)).add(progratio));
-						eltotal.add(prog.get(i));
+						eltotal=eltotal.add(prog.get(i));
 					}
 					System.out.printf("Termos da progressão:\n%s", prog.get(0).toPlainString());
 					for (BigDecimal el : prog.subList(1, proglen)) {
 						System.out.printf(", %s", el.toPlainString());
 					}
-					System.out.printf(".\nSomatório dos elementos da progressão: %s.\n", eltotal.toPlainString());
+					System.out.printf(".\nSomatório dos elementos da progressão: %s.\n\n", eltotal.toPlainString());
 				}
 				case 6 -> {
 					System.out.printf(
@@ -435,7 +466,7 @@ public class Main {
 				}
 				}
 			}
-		} while (!rawchoice.equals("sair"));
+		} while (!endstr.equals("sair"));
 		ativsc.close();
 		choicesc.close();
 	}
