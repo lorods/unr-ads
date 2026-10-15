@@ -1,5 +1,6 @@
 package iniciado220926;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,9 +12,9 @@ public class Main {
 		return new int[] { sortd[0], sortd[(sortd.length - 1)] };
 	}
 
-	public static void main(String[] args) {
-		Scanner choicesc = new Scanner(System.in);
-		String rawchoice, shortch;
+	public static void main(String[] args) throws IOException {
+		Scanner choicesc = new Scanner(System.in), ativsc = new Scanner(System.in);
+		String rawchoice = new String(), shortch;
 		int choice;
 		do {
 			System.out.printf("Insira um código entre 1 e 10 ou digite \"Sair\" e então tecle Enter: ");
@@ -21,25 +22,44 @@ public class Main {
 			shortch = String.valueOf(rawchoice.charAt(0));
 			if (!shortch.matches("[a-zA-Z]")) {
 				choice = Integer.parseInt(rawchoice);
-				Scanner ativsc = new Scanner(System.in);
 				switch (choice) {
 				case 1 -> {
-					
+					System.out.printf(
+							"Esta funcionalidade recebe dois fatores e calcula a multiplicação entre eles sem usar a operação de multiplicação, substituindo-a pelo incremento iterado de um dos fatores.\n");
+					int lfactr, rfactr, prod;
+					System.out.printf("Informe o primeiro fator: ");
+					lfactr = ativsc.nextInt();
+					int origlfact = lfactr;
+					System.out.printf("Informe o segundo fator: ");
+					rfactr = ativsc.nextInt();
+					int origrfact = rfactr;
+					prod = (lfactr == 0 || rfactr == 0) ? 0 : lfactr;
+					int targetfactr = (rfactr < 0) ? rfactr * (-1) : rfactr;
+					if (prod != 0) {
+						if((rfactr<0&&lfactr<0)||(rfactr<0&&lfactr>0)) {
+							lfactr*=-1;
+							prod=lfactr;
+						}
+						for (int i = 2; i <= targetfactr; i++) {
+							prod += lfactr;
+						}		
+					}
+					System.out.printf("O produto %d * %d é %d.\n", origlfact, origrfact, prod);
 				}
 				case 2 -> {
 					BigDecimal balance = BigDecimal.ZERO;
 					System.out.printf("Esta funcionalidade simula um terminal bancário. ");
 					int ch;
 					BigDecimal deposit, withdrawal;
-					for (boolean shquit=false;!shquit;) {
+					for (boolean shquit = false; !shquit;) {
 						deposit = BigDecimal.ZERO;
 						withdrawal = BigDecimal.ZERO;
 						System.out.printf("Escolha entre as opções 1 — Saldo, 2 — Saque, 3 — Depósito e 4 — Sair: ");
 						ch = ativsc.nextInt();
 						switch (ch) {
-						case 4 -> shquit=true;
+						case 4 -> shquit = true;
 						case 1 -> {
-							System.out.printf("Caro cliente, seu saldo atual é R$ %s.", balance.toPlainString());
+							System.out.printf("Caro cliente, seu saldo atual é R$ %s.\n", balance.toPlainString());
 						}
 						case 2 -> {
 							for (boolean proceed = false; !proceed;) {
@@ -47,15 +67,15 @@ public class Main {
 										"Prezado cliente, qual o valor que deseja sacar de sua conta? Insira ao lado: ");
 								withdrawal = ativsc.nextBigDecimal();
 								if (withdrawal.compareTo(balance) == 1) {
-									System.out.printf("Erro: saldo é insuficiente para quantia de saque desejada.\n");
+									System.out.printf("Erro: saldo (R$ %s) é insuficiente para quantia de saque desejada (R$ %s).\n",balance.toPlainString(),withdrawal.toPlainString());
 									continue;
-								}
-								else if(withdrawal.compareTo(BigDecimal.ZERO)<=0) {
-									System.out.printf("Erro: uma quantia de saque negativa caracteriza um depósito. Você deseja depositar algum valor em sua conta? Caso positivo, escolha a opção 3 (depósito) a seguir.\n");
-									break;		
+								} else if (withdrawal.compareTo(BigDecimal.ZERO) <= 0) {
+									System.out.printf(
+											"Erro: uma quantia de saque negativa caracteriza um depósito. Você deseja depositar algum valor em sua conta? Caso positivo, escolha a opção 3 (depósito) a seguir.\n");
+									break;
 								}
 								balance = balance.subtract(withdrawal);
-								proceed=true;
+								proceed = true;
 							}
 						}
 						case 3 -> {
@@ -68,7 +88,7 @@ public class Main {
 											"O depósito mínimo é de R$ 0,01. Para cancelar esta operação, digite 0 a seguir.\n");
 									continue;
 
-								} else if (!(deposit.compareTo(BigDecimal.ZERO) == 1))
+								} else if (deposit.compareTo(BigDecimal.ZERO)==1)
 									balance.add(deposit);
 								proceed = true;
 							}
@@ -414,9 +434,9 @@ public class Main {
 					System.out.printf("A %dª potência de base %d é %d.\n", exp, base, result);
 				}
 				}
-				ativsc.close();
 			}
 		} while (!rawchoice.equals("sair"));
+		ativsc.close();
 		choicesc.close();
 	}
 }
