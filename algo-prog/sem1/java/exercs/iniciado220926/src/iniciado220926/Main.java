@@ -298,7 +298,7 @@ public class Main {
 							double ceildsqrt = Math.sqrt(chkdprim);
 							if (chkdprim % 1 != 0)
 								ceildsqrt = Math.ceil(ceildsqrt);
-							chkNatPrimality(chkdprim, ceildsqrt);
+							LoopHelpers.chkSimpleNatPrimality(chkdprim, ceildsqrt);
 						}
 					} while (isnatural == false);
 				}
@@ -344,7 +344,7 @@ public class Main {
 							double ceildsqrt = Math.sqrt(collectd[i]);
 							if (collectd[i] % 1 != 0)
 								ceildsqrt = Math.ceil(collectd[i]);
-							isprime = chkNatPrimality(collectd[i], ceildsqrt);
+							isprime = LoopHelpers.chkSimpleNatPrimality(collectd[i], ceildsqrt);
 						}
 						if (collectd[i] > 1000) {
 							colgreathelpr = (colgreathelpr.length > 0)
@@ -363,7 +363,7 @@ public class Main {
 						}
 					}
 					boolean isanyprime = (colprime.length != 0);
-					int[] sortdprime = isanyprime ? getBounds(colprime) : null;
+					int[] sortdprime = isanyprime ? LoopHelpers.getSimpleBounds(colprimehelpr) : null;
 					System.out.printf("\nEstatísticas desejadas em relação aos números fornecidos:\nNúmeros primos: %s",
 							isanyprime ? String.valueOf(colprime[0]) : "nenhum");
 					if (isanyprime) {
