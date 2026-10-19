@@ -198,22 +198,38 @@ public class LoopHelpers {
 			classavg = classavg.add(indavg);
 		}
 		BigDecimal bigclsize = new BigDecimal(clsize);
-		classavg = classavg.divide(bigclsize);
+		try {
+			classavg = classavg.divide(bigclsize);
+		} catch (ArithmeticException ae) {
+			classavg = classavg.divide(bigclsize, 2, RoundingMode.HALF_UP);
+		}
 		System.out.printf("\nEstatísticas consolidadas:\n\n");
 		int aprovtotal = 0, reprovtotal = 0;
 		boolean[] isappr = new boolean[clsize];
 		for (int i = 0; i < clsize; i++) {
 			if (apprstatus[i].equals(Situacao.APROVADO)) {
 				aprovtotal++;
-				isappr[clsize] = true;
+				isappr[i] = true;
 			} else {
 				reprovtotal++;
-				isappr[clsize] = false;
+				isappr[i] = false;
 			}
 		}
 		final BigDecimal bighundred = new BigDecimal(100);
-		BigDecimal apprperc = new BigDecimal(aprovtotal).divide(bigclsize).multiply(bighundred),
-				repprperc = new BigDecimal(reprovtotal).divide(bigclsize).multiply(bighundred);
+		BigDecimal apprperc;
+		try {
+			apprperc = new BigDecimal(aprovtotal).divide(bigclsize);
+		} catch (ArithmeticException ae) {
+			apprperc = new BigDecimal(aprovtotal).divide(bigclsize, 2, RoundingMode.HALF_UP);
+		}
+		apprperc = apprperc.multiply(bighundred);
+		BigDecimal repprperc;
+		try {
+			repprperc = new BigDecimal(reprovtotal).divide(bigclsize);
+		} catch (ArithmeticException ae) {
+			repprperc = new BigDecimal(reprovtotal).divide(bigclsize, 2, RoundingMode.HALF_UP);
+		}
+		repprperc = repprperc.multiply(bighundred);
 		return new GradingSummary(studentavg, isappr, classavg, apprperc, repprperc);
 	}
 
@@ -264,7 +280,7 @@ public class LoopHelpers {
 		}
 
 		public BigDecimal[] getMemberel() {
-			return memberel;
+			return Arrays.copyOfRange(memberel, 1, proglen);
 		}
 
 		void setMemberel(BigDecimal[] memberel) {
@@ -280,24 +296,28 @@ public class LoopHelpers {
 		}
 	}
 
-	public static ArrayList<ArithmeticProg> fillAP(int progboundary, Scanner ativsc) {
+	public static ArrayList<ArithmeticProg> fillAP(int progboundary, Scanner activitsc) {
 		ArrayList<ArithmeticProg> aplist = new ArrayList<ArithmeticProg>(progboundary);
 		int plen;
+		String staytest;
 		for (int i = 0; i < progboundary; i++) {
 			System.out.printf(
-					"Forneça o tamanho (capacidade de elementos) da progressão — caso forneça 1 ou 0, um ou dois elemento(s) extra(s)r será(ão) acrescentado(s) para formar uma progressão mínima: ");
-			plen = ativsc.nextInt();
-			if (plen == 0 || plen == 1)
+					"Forneça o tamanho (capacidade de elementos) da progressão — caso forneça 1, 0 ou um número negativo, um ou dois elemento(s) extra(s)r será(ão) acrescentado(s) para formar uma progressão mínima: ");
+			plen = activitsc.nextInt();
+			if (plen < 0)
+				plen *= (-1);
+			else if (plen == 0 || plen == 1)
 				plen = 2;
 			ArithmeticProg ap = new ArithmeticProg(plen);
 			System.out.printf("Forneça o primeiro elemento enumerado na progressão: ");
-			BigDecimal curleadel = ativsc.nextBigDecimal();
+			BigDecimal curleadel = activitsc.nextBigDecimal();
 			ap.setLeadel(curleadel);
 			System.out.printf(
 					"Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
-			BigDecimal curprogratio = ativsc.nextBigDecimal(), eltotal = curleadel;
+			BigDecimal curprogratio = activitsc.nextBigDecimal(), eltotal = curleadel;
 			ap.setProgratio(curprogratio);
 			BigDecimal[] prog = new BigDecimal[plen];
+			prog[0] = curleadel;
 			for (int j = 1; j < plen; j++) {
 				prog[j] = prog[(j - 1)].add(curprogratio);
 				eltotal = eltotal.add(prog[j]);
@@ -311,6 +331,12 @@ public class LoopHelpers {
 									 * eltotal.toPlainString());
 									 */
 			aplist.add(ap);
+			activitsc.nextLine();
+			System.out.printf(
+					"Você deseja permanecer lendo elementos? Digite s para sair ou qualquer outro caractere para continuar: ");
+			staytest = activitsc.nextLine();
+			if (staytest.equals("s"))
+				break;
 		}
 		return aplist;
 	}

@@ -2,6 +2,7 @@ package io.github.lorods.iniciado061026;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 import io.github.lorods.unitutils.loopconstructs.LoopHelpers;
@@ -61,21 +62,25 @@ public class Main {
 					}
 					System.out.printf(".\n\n");
 				}
+				//case 2 PASSED manual testing
 				case 2 -> {
 					System.out.printf("Esta funcionalidade simula um terminal bancário. ");
 					int ch;
 					OperationSummary operoutput = new OperationSummary(false, BigDecimal.ZERO);
-					boolean shquit = operoutput.shquit();
-					BigDecimal balance = operoutput.balance();
+					boolean shquit = false;
+					BigDecimal balance = BigDecimal.ZERO;
 					for (; !shquit;) {
 						System.out.printf("Escolha entre as opções 1 — Saldo, 2 — Saque, 3 — Depósito e 4 — Sair: ");
 						ch = activitsc.nextInt();
 						operoutput = LoopHelpers.operateOnBalance(ch, balance, activitsc);
+						balance = operoutput.balance();
+						shquit = operoutput.shquit();
 						System.out.printf(new String("Caro cliente, seu saldo atualizado ")
 								.concat((shquit) ? "ao fim desta sessão de atendimento é de " : "é de ")
-								.concat(String.format("R$ %d.\n", balance)));
+								.concat(String.format("R$ %s.\n", balance.toPlainString())));
 					}
 				}
+				//case 3 PASSED manual testing
 				case 3 -> {
 					int clsize;
 					final BigDecimal gradelen = new BigDecimal(3);
@@ -108,6 +113,7 @@ public class Main {
 							"Fatia de alunos aprovados (em porcentagem): %s.\nFatia de alunos reprovados (em porcentagem): %s.\n\n",
 							apprperc.toPlainString(), repprperc.toPlainString());
 				}
+				//case 4 PASSED manual testing
 				case 4 -> {
 					final int typdlen = 90000;
 					int[] typdnum = new int[typdlen];
@@ -115,7 +121,8 @@ public class Main {
 					System.out.printf(
 							"Este algoritmo recebe até 90000 números inteiros e verifica o maior e menor digitados. Você será indagado sobre eles agora. Para interromper a leitura, digite \"continuar\", sem aspas.\n");
 					String typewbuff;
-					for (int i = 0; i < typdnum.length && !shquit; i++) {
+					int scand;
+					for (int i = 0; i < typdlen && !shquit; i++) {
 						for (;;) {
 							System.out.printf("Forneça o número para ocupar o registro %d: ", (i + 1));
 							typewbuff = activitsc.nextLine();
@@ -124,7 +131,9 @@ public class Main {
 								shquit = true;
 								break;
 							} else if (typewbuff.matches("-?\\d+")) {
-								typdnum[i] = Integer.parseInt(typewbuff);
+								scand = Integer.parseInt(typewbuff);
+								typdnum = Arrays.copyOf(typdnum, (i+1));
+								typdnum[i] = scand;
 								break;
 							} else {
 								System.out.printf("Valor inserido não numérico. Tente novamente.\n");
@@ -136,14 +145,16 @@ public class Main {
 					System.out.printf("Seguem o menor e maior inteiros digitados: %d e %d.\n\n", sortdtypd[0],
 							sortdtypd[1]);
 				}
+				//case 5 PASSED manual testing
 				case 5 -> {
 					final int progcapacity = 3000;
 					System.out.printf(
-							"Esta funcionalidade lê um número finito n, um termo inicial a1 e uma razão de progressão r e calcula seus termos de 1 a n, além de seu somatório.\n");
+							"Esta funcionalidade lê, até 3000 vezes, um número finito n, um termo inicial a1 e uma razão de progressão r e calcula seus termos de 1 a n, além de seu somatório.\n");
 					ArrayList<ArithmeticProg> outaplist = LoopHelpers.fillAP(progcapacity, activitsc);
 					BigDecimal[] memberel;
 					String eltotal, leadel;
-					for (int i = 0; i < progcapacity; i++) {
+					final int aplen = outaplist.size();
+					for (int i = 0; i < aplen; i++) {
 						leadel = outaplist.get(i).getLeadel();
 						System.out.printf("Termos da progressão artimética %d:\n%s", (i + 1), leadel);
 						memberel = outaplist.get(i).getMemberel();
@@ -154,6 +165,7 @@ public class Main {
 						System.out.printf(".\nSomatório dos elementos da progressão: %s.\n\n", eltotal);
 					}
 				}
+				//case 6 PASSED manual testing
 				case 6 -> {
 					System.out.printf("Esta funcionalidade define se um número positivo é primo ou não. ");
 					int chkdlen;
@@ -176,7 +188,6 @@ public class Main {
 							System.out.printf("Erro: entrada <=0. É necessário um número positivo...\n");
 							continue;
 						}
-						System.out.printf("current chkdprim: %d\n", chkdprim[i]);
 						i++;
 					}
 					PrimalitySummary primoutput = LoopHelpers.groupNatPrimality(chkdprim);
@@ -184,7 +195,7 @@ public class Main {
 					int[] confprime = primoutput.confprime();
 					System.out.printf("Total de elementos primos: %d.\n\n", primecnt);
 					System.out.printf("São primos: %d", confprime[0]);
-					for (int j = 1; i < confprime.length; j++) {
+					for (int j = 1; j < confprime.length; j++) {
 						System.out.printf(", %d", confprime[j]);
 					}
 					System.out.printf(".\n");
@@ -192,7 +203,7 @@ public class Main {
 				case 7 -> {
 					int amount;
 					System.out.printf(
-							"Esta funcionalidade aceita uma quantidade de números informada por você e obtém:\n1) quantos números são primos e/ou maiores do que 1000,\n2) qual o maior e menor números primos digitados, e\n3) a média aritmética dos números primos digitados.\\n");
+							"Esta funcionalidade aceita uma quantidade de números informada por você e obtém:\n1) quantos números são primos e/ou maiores do que 1000,\n2) qual o maior e menor números primos digitados, e\n3) a média aritmética dos números primos digitados.\n");
 					for (;;) {
 						System.out.printf("Forneça a quantidade de números para leitura: ");
 						amount = activitsc.nextInt();
