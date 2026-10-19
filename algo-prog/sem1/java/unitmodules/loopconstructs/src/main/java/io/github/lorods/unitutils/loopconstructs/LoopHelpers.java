@@ -25,30 +25,45 @@ public class LoopHelpers {
 		System.out.printf("O número %d é primo.\n", chkdprim);
 		return true;
 	}
-	
-	//exercise 6, set 7
-	public static Object[] groupNatPrimality(int[] chkdset) {
+
+	public record PrimalitySummary(int primecnt, int[] confprime) {
+
+	}
+
+	// exercise 6, set 7
+	public static PrimalitySummary groupNatPrimality(int[] chkdset) {
 		int primecnt = 0;
-		int confprime[] = new int[0];
-		boolean isprime;
+		int[] confprime = new int[0];
+		Boolean isprime;
 		double ceildsqrt;
 		for (int chkdprim : chkdset) {
-			ceildsqrt = Math.sqrt(chkdprim);
-			if (chkdprim % 1 != 0)
-				ceildsqrt = Math.ceil(ceildsqrt);
-			isprime = chkSimpleNatPrimality(chkdprim, ceildsqrt);
+			isprime = null;
+			// check for 2 and 3 special cases
+			if (chkdprim == 2 || chkdprim == 3)
+				isprime = true;
+			// check for even numbers
+			else if (chkdprim % 2 == 0 || chkdprim == 1) {
+				isprime = false;
+				continue;
+			}
+			if (isprime == null) {
+				ceildsqrt = Math.sqrt(chkdprim);
+				if (chkdprim % 1 != 0)
+					ceildsqrt = Math.ceil(ceildsqrt);
+				isprime = chkSimpleNatPrimality(chkdprim, ceildsqrt);
+			}
 			if (isprime) {
 				if (confprime.length == 0) {
 					confprime = new int[1];
 					confprime[0] = chkdprim;
 				} else {
 					confprime = Arrays.copyOf(confprime, (confprime.length + 1));
-					confprime[(confprime.length-1)] = chkdprim;
+					confprime[(confprime.length - 1)] = chkdprim;
 				}
 				primecnt++;
 			}
 		}
-		return new Object[] { confprime, primecnt };
+		return new PrimalitySummary(primecnt, confprime);
 	}
 
 	/**
@@ -61,33 +76,37 @@ public class LoopHelpers {
 		return new int[] { sortd[0], sortd[(sortd.length - 1)] };
 	}
 
-	// exercise 1, set 7
-	public static int[] multiplySameIndex(int[] lfactr, int[] rfactr) {
-		int[] prod = new int[1000];
-		for (int curfi = 0; curfi < lfactr.length; curfi++) {
-			prod[curfi] = (lfactr[curfi] == 0 || rfactr[curfi] == 0) ? 0 : lfactr[curfi];
-			int targetfactr = (rfactr[curfi] < 0) ? rfactr[curfi] * (-1) : rfactr[curfi];
-			if (prod[curfi] != 0) {
-				if ((rfactr[curfi] < 0 && lfactr[curfi] < 0) || (rfactr[curfi] < 0 && lfactr[curfi] > 0)) {
-					lfactr[curfi] *= -1;
-					prod = lfactr;
-				}
-				for (int i = 2; i <= targetfactr; i++) {
-					prod[curfi] += lfactr[curfi];
-				}
+	// exercise 1, set 7; exercise 8, set 7
+	public static int[] multiplySameIndex(int[] lfactr, int[] rfactr, int indivlen) {
+		// indivlen: 1000 or 3000, for exs. 1 and 8, respectively
+		int[] prod = new int[indivlen];
+		for (int i = 0; i < indivlen; i++) {
+			int a = lfactr[i];
+			int b = rfactr[i];
+			if (b < 0) {
+				a = 0 - a;
+				b = 0 - b;
 			}
-			assert prod[curfi] == lfactr[curfi] * rfactr[curfi] : "Erro na lógica da subrotina.";
+			for (int j = 0; j < b; j++) {
+				prod[i] += a;
+			}
+			assert prod[i] == a * b : String
+					.format("\nAlgo na lógica do cálculo mostrado ao lado está errado: result =/= %d * %d.\n", a, b);
 		}
 		return prod;
 	}
 
+	public record OperationSummary(boolean shquit, BigDecimal balance) {
+	};
+
 	// exercise 2, set 7
-	public static Object[] operateOnBalance(int ch, BigDecimal balance, boolean shquit, Scanner ativsc) {
+	public static OperationSummary operateOnBalance(int ch, BigDecimal balance, Scanner ativsc) {
 		BigDecimal withdrawal, deposit;
+		boolean shquit = false;
 		switch (ch) {
 		case 4 -> shquit = true;
 		case 1 -> {
-			System.out.printf("Caro cliente, seu saldo atual é R$ %s.\n", balance.toPlainString());
+			break;
 		}
 		case 2 -> {
 			for (boolean proceed = false; !proceed;) {
@@ -125,13 +144,15 @@ public class LoopHelpers {
 			System.out.printf("Opção digitada não é válida!");
 		}
 		}
-		if (ch != 1)
-			System.out.printf("Atualmente, seu saldo é de R$ %s.\n", balance.toPlainString());
-		return new Object[] { shquit, balance };
+		return new OperationSummary(shquit, balance);
 	}
 
+	public record GradingSummary(BigDecimal[] studentavg, boolean[] isappr, BigDecimal classavg, BigDecimal apprperc,
+			BigDecimal repprperc) {
+	};
+
 	// exercise 3, set 7
-	public static Object[] requestGrading(int clsize, Scanner ativsc, BigDecimal gradelen) {
+	public static GradingSummary requestGrading(int clsize, Scanner ativsc, BigDecimal gradelen) {
 		ArrayList<BigDecimal[]> typdgrade = new ArrayList<BigDecimal[]>(clsize);
 		enum Situacao {
 			REPROVADO, APROVADO
@@ -180,7 +201,7 @@ public class LoopHelpers {
 		classavg = classavg.divide(bigclsize);
 		System.out.printf("\nEstatísticas consolidadas:\n\n");
 		int aprovtotal = 0, reprovtotal = 0;
-		boolean isappr[] = new boolean[clsize];
+		boolean[] isappr = new boolean[clsize];
 		for (int i = 0; i < clsize; i++) {
 			if (apprstatus[i].equals(Situacao.APROVADO)) {
 				aprovtotal++;
@@ -193,19 +214,22 @@ public class LoopHelpers {
 		final BigDecimal bighundred = new BigDecimal(100);
 		BigDecimal apprperc = new BigDecimal(aprovtotal).divide(bigclsize).multiply(bighundred),
 				repprperc = new BigDecimal(reprovtotal).divide(bigclsize).multiply(bighundred);
-		return new Object[] { studentavg, isappr, classavg, apprperc, repprperc };
+		return new GradingSummary(studentavg, isappr, classavg, apprperc, repprperc);
 	}
 
 	// exercise 5, set 7
-	private static class ArithmeticProg {
+	public static class ArithmeticProg {
 		int proglen;
 		BigDecimal progratio, leadel, eltotal;
+		BigDecimal[] memberel;
 
-		ArithmeticProg(int proglen, BigDecimal progratio, BigDecimal leadel, BigDecimal eltotal) {
+		ArithmeticProg(int proglen, BigDecimal progratio, BigDecimal leadel, BigDecimal eltotal,
+				BigDecimal[] memberel) {
 			this.proglen = proglen;
 			this.progratio = progratio;
 			this.leadel = leadel;
 			this.eltotal = eltotal;
+			this.memberel = memberel;
 		}
 
 		ArithmeticProg(int proglen) {
@@ -215,7 +239,7 @@ public class LoopHelpers {
 		ArithmeticProg() {
 		}
 
-		int getProglen() {
+		public int getProglen() {
 			return proglen;
 		}
 
@@ -223,7 +247,7 @@ public class LoopHelpers {
 			this.proglen = proglen;
 		}
 
-		BigDecimal getProgratio() {
+		public BigDecimal getProgratio() {
 			return progratio;
 		}
 
@@ -231,16 +255,24 @@ public class LoopHelpers {
 			this.progratio = progratio;
 		}
 
-		BigDecimal getLeadel() {
-			return leadel;
+		public String getLeadel() {
+			return leadel.toPlainString();
 		}
 
 		void setLeadel(BigDecimal leadel) {
 			this.leadel = leadel;
 		}
 
-		BigDecimal getEltotal() {
-			return eltotal;
+		public BigDecimal[] getMemberel() {
+			return memberel;
+		}
+
+		void setMemberel(BigDecimal[] memberel) {
+			this.memberel = memberel;
+		}
+
+		public String getEltotal() {
+			return eltotal.toPlainString();
 		}
 
 		void setEltotal(BigDecimal eltotal) {
@@ -250,8 +282,11 @@ public class LoopHelpers {
 
 	public static ArrayList<ArithmeticProg> fillAP(int progboundary, Scanner ativsc) {
 		ArrayList<ArithmeticProg> aplist = new ArrayList<ArithmeticProg>(progboundary);
+		int plen;
 		for (int i = 0; i < progboundary; i++) {
-			int plen = ativsc.nextInt();
+			System.out.printf(
+					"Forneça o tamanho (capacidade de elementos) da progressão — caso forneça 1 ou 0, um ou dois elemento(s) extra(s)r será(ão) acrescentado(s) para formar uma progressão mínima: ");
+			plen = ativsc.nextInt();
 			if (plen == 0 || plen == 1)
 				plen = 2;
 			ArithmeticProg ap = new ArithmeticProg(plen);
@@ -262,20 +297,152 @@ public class LoopHelpers {
 					"Forneça a razão de progressão (transformação a ser aplicada sucessivamente; entrada válida: número racional): ");
 			BigDecimal curprogratio = ativsc.nextBigDecimal(), eltotal = curleadel;
 			ap.setProgratio(curprogratio);
-			ap.setEltotal(curleadel);
 			BigDecimal[] prog = new BigDecimal[plen];
 			for (int j = 1; j < plen; j++) {
 				prog[j] = prog[(j - 1)].add(curprogratio);
 				eltotal = eltotal.add(prog[j]);
-			} /*
-				 * System.out.printf("Termos da progressão:\n%s", prog.get(0).toPlainString());
-				 * for (BigDecimal el : prog.subList(1, proglen)) { System.out.printf(", %s",
-				 * el.toPlainString()); }
-				 * System.out.printf(".\nSomatório dos elementos da progressão: %s.\n\n",
-				 * eltotal.toPlainString());
-				 */
+			}
+			ap.setMemberel(prog);
+			ap.setEltotal(eltotal);/*
+									 * System.out.printf("Termos da progressão:\n%s", prog.get(0).toPlainString());
+									 * for (BigDecimal el : prog.subList(1, proglen)) { System.out.printf(", %s",
+									 * el.toPlainString()); }
+									 * System.out.printf(".\nSomatório dos elementos da progressão: %s.\n\n",
+									 * eltotal.toPlainString());
+									 */
 			aplist.add(ap);
 		}
 		return aplist;
+	}
+
+	public record NumFactsheet(boolean isanyprime, int[] colprime, boolean isanyaboveoneth, int[] colgreat,
+			int[] sortdprime, String primeavg) {
+
+	}
+
+	// exercise 7, set 7
+	public static NumFactsheet getNumFacts(int amount, Scanner ativsc) {
+		int primetot = 0;
+		int[] collectd = new int[amount], colgreat = new int[0], colprime = new int[0];
+		int[] colgreathelpr = new int[0], colprimehelpr = new int[0];
+		boolean isprime, isnatural;
+		// check for 2 and 3 special case
+		for (int i = 0; i < amount; i++) {
+			isprime = false;
+			do {
+				System.out.printf("Forneça o valor %d (qualquer entrada negativa produzirá um inverso positivo): ",
+						(i + 1));
+				collectd[i] = ativsc.nextInt();
+				if (collectd[i] < 0) {
+					collectd[i] *= -1;
+				} else if (collectd[i] == 0) {
+					isnatural = false;
+					System.out.printf("Erro: 0 é divisível por qualquer número. Tente outro...\n");
+					continue;
+				}
+				isnatural = true;
+			} while (!isnatural);
+			// check for 2 and 3 special case
+			if (collectd[i] == 2 || collectd[i] == 3) {
+				System.out.printf("O número %d é primo.\n", collectd[i]);
+				isprime = true;
+			}
+			// check for even numbers
+			else if (collectd[i] % 2 == 0 || collectd[i] == 1)
+				System.out.printf("O número %d não é primo.\n", collectd[i]);
+			else {
+				double ceildsqrt = Math.sqrt(collectd[i]);
+				if (collectd[i] % 1 != 0)
+					ceildsqrt = Math.ceil(collectd[i]);
+				isprime = LoopHelpers.chkSimpleNatPrimality(collectd[i], ceildsqrt);
+			}
+			if (collectd[i] > 1000) {
+				colgreathelpr = (colgreathelpr.length > 0) ? Arrays.copyOf(colgreathelpr, (colgreathelpr.length + 1))
+						: new int[1];
+				colgreathelpr[(colgreathelpr.length - 1)] = collectd[i];
+				colgreat = Arrays.copyOf(colgreathelpr, colgreathelpr.length);
+			}
+			if (isprime) {
+				colprimehelpr = (colprimehelpr.length > 0) ? Arrays.copyOf(colprimehelpr, (colprimehelpr.length + 1))
+						: new int[1];
+				colprimehelpr[(colprimehelpr.length - 1)] = collectd[i];
+				colprime = Arrays.copyOf(colprimehelpr, colprimehelpr.length);
+				primetot += collectd[i];
+			}
+		}
+		boolean isanyprime = (colprime.length != 0);
+		int[] sortdprime = isanyprime ? LoopHelpers.getSimpleBounds(colprimehelpr) : null;
+		/*
+		 * System.out.
+		 * printf("\nEstatísticas desejadas em relação aos números fornecidos:\nNúmeros primos: %s"
+		 * , isanyprime ? String.valueOf(colprime[0]) : "nenhum"); if (isanyprime) { for
+		 * (int i = 1; i < colprime.length; i++) { System.out.printf(", %d",
+		 * colprime[i]); } }
+		 */
+		boolean isanyaboveoneth = (colgreat.length != 0);
+		String primeavg = new BigDecimal(primetot).divide(new BigDecimal(colprime.length)).toPlainString();
+		// System.out.printf(".\n———\nNúmeros maiores que 1000: %s",
+		// isanyaboveoneth ? String.valueOf(colgreat[0]) : "nenhum");
+		/*
+		 * if (isanyaboveoneth) { for (int i = 1; i < colgreat.length; i++) {
+		 * System.out.printf(", %d", colgreat[i]); } }
+		 */
+		/*
+		 * System.out.printf(new String(".\n———\n").concat(isanyprime ? String.format(
+		 * "Menor e maior primo, respectivamente: %d e %d\nMédia aritmética dos números primos localizados: %s\n———"
+		 * , sortdprime[0], sortdprime[1],new BigDecimal(primetot).divide(new
+		 * BigDecimal(colprime.length)).toPlainString()) :
+		 * "Não é possível localizar o maior ou menor número primo nem obter a média deles porque nenhum foi informado na digitação."
+		 * ) .concat("\n\n"));
+		 */
+		return new NumFactsheet(isanyprime, colprime, isanyaboveoneth, colgreat,
+				(sortdprime.length != 0) ? (sortdprime) : (null), primeavg);
+	}
+
+	// exercise 9, set 7
+	public static int[] powOfIndexes(int[] base, int[] exp, int indivlen) {
+		int[] result = new int[indivlen];
+		for (int i = 0; i < indivlen; i++) {
+			result[i] = (exp[i] == 0) ? 1 : 0;
+			if (result[i] != 1) {
+				result[i] = base[i];
+				for (int j = 2; j <= exp[i]; j++) {
+					result[i] *= base[i];
+					// System.out.printf("Resultado atual da potenciação: %d.\ni: %d\n", result, i);
+				}
+			}
+			// System.out.printf("A %dª potência de base %d é %d.\n\n", exp, base, result);}
+			assert result[i] == Math.pow(base[i], exp[i]) : String.format(
+					"\nAlgo na lógica do cálculo mostrado acima está errado (result =/= Math.pow(%d,%d)).\n", base[i],
+					exp[i]);
+		}
+		return result;
+	}
+
+	public static int[] powOfIndexes(int[] base, int[] exp, int indivlen, boolean isadditionimpl) {
+		int[] result = new int[indivlen];
+		int curftr;
+		for (int i = 0; i < indivlen; i++) {
+			result[i] = (exp[i] == 0) ? 1 : 0;
+			curftr = base[i];
+			if (result[i] != 1) {
+				result[i] = base[i];
+				for (int j = 2; j <= exp[i]; j++) {
+					for (int k = 1; k < base[i]; k++) {
+						result[i] += curftr;
+						/*
+						 * System.out.printf("Resultado atual da potenciação: %d.\n (i, j): (%d, %d)\n",
+						 * result, i, j);
+						 */
+					}
+					curftr = result[i];
+				}
+			}
+			// System.out.printf("A %dª potência de base %d é %d.\n\n", exp, base, result);
+			assert result[i] == Math.pow(base[i], exp[i]) : String.format(
+					"\nAlgo na lógica do cálculo mostrado acima está errado (result =/= Math.pow(%d,%d)).\n", base[i],
+					exp[i]);
+		}
+		return result;
 	}
 }

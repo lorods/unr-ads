@@ -3,4 +3,22 @@
   <groupId>io.github.lorods</groupId>
   <artifactId>iniciado061026</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  	<repositories>
+		<repository>
+			<id>authoredbundle</id>
+			<name>
+				unitutils-bin
+			</name>
+			<url>
+				file:${env.HOME}/Devels/unr-ads/algo-prog/sem1/java/unitmodules/out/bin/snapshot
+			</url>
+		</repository>
+	</repositories>
+	<dependencies>
+		<dependency>
+			<groupId>io.github.lorods.unitutils</groupId>		
+			<artifactId>loopconstructs</artifactId>
+			<version>0.0.1-SNAPSHOT</version>	
+		</dependency>
+	</dependencies>
 </project>

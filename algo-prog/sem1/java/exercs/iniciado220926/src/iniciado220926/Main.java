@@ -300,7 +300,7 @@ public class Main {
 								ceildsqrt = Math.ceil(ceildsqrt);
 							LoopHelpers.chkSimpleNatPrimality(chkdprim, ceildsqrt);
 						}
-					} while (isnatural == false);
+					} while (!isnatural);
 				}
 				case 7 -> {
 					int amount;
