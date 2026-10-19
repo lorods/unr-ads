@@ -10,7 +10,7 @@
 				unitutils-bin
 			</name>
 			<url>
-				file:${env.HOME}/Devels/unr-ads/algo-prog/sem1/java/unitmodules/out/bin/snapshot
+				file:${user.home}/Devels/unr-ads/algo-prog/sem1/java/unitmodules/out/bin/snapshot
 			</url>
 		</repository>
 	</repositories>
