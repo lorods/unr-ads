@@ -200,6 +200,7 @@ public class Main {
 					}
 					System.out.printf(".\n");
 				}
+				//case 7 PASSED manual testing
 				case 7 -> {
 					int amount;
 					System.out.printf(
@@ -217,7 +218,7 @@ public class Main {
 					boolean isanyprime = numbreakdwn.isanyprime(), isanyaboveoneth = numbreakdwn.isanyaboveoneth();
 					int[] sortdprime = numbreakdwn.sortdprime(), colprime = numbreakdwn.colprime(),
 							colgreat = numbreakdwn.colgreat();
-					String primeavg = numbreakdwn.primeavg();
+					String primeavg = numbreakdwn.primeavgdisp();
 					System.out.printf("\nEstatísticas desejadas em relação aos números fornecidos:\nNúmeros primos: %s",
 							isanyprime ? String.valueOf(colprime[0]) : "nenhum");
 					if (isanyprime) {

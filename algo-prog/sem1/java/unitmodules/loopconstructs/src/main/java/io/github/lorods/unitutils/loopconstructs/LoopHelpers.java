@@ -342,7 +342,7 @@ public class LoopHelpers {
 	}
 
 	public record NumFactsheet(boolean isanyprime, int[] colprime, boolean isanyaboveoneth, int[] colgreat,
-			int[] sortdprime, String primeavg) {
+			int[] sortdprime, String primeavgdisp) {
 
 	}
 
@@ -406,7 +406,14 @@ public class LoopHelpers {
 		 * colprime[i]); } }
 		 */
 		boolean isanyaboveoneth = (colgreat.length != 0);
-		String primeavg = new BigDecimal(primetot).divide(new BigDecimal(colprime.length)).toPlainString();
+		BigDecimal primeavg = null;
+		BigDecimal primlen = new BigDecimal(colprime.length), bigprimtot = new BigDecimal(primetot);
+		try {
+			primeavg = bigprimtot.divide(primlen);
+		} catch (ArithmeticException ae) {
+			if (!primlen.equals(BigDecimal.ZERO))
+				primeavg = bigprimtot.divide(primlen, 2, RoundingMode.HALF_UP);
+		}
 		// System.out.printf(".\n———\nNúmeros maiores que 1000: %s",
 		// isanyaboveoneth ? String.valueOf(colgreat[0]) : "nenhum");
 		/*
@@ -421,8 +428,8 @@ public class LoopHelpers {
 		 * "Não é possível localizar o maior ou menor número primo nem obter a média deles porque nenhum foi informado na digitação."
 		 * ) .concat("\n\n"));
 		 */
-		return new NumFactsheet(isanyprime, colprime, isanyaboveoneth, colgreat,
-				(sortdprime.length != 0) ? (sortdprime) : (null), primeavg);
+		String primeavgdisp = (primeavg == null) ? null : primeavg.toPlainString();
+		return new NumFactsheet(isanyprime, colprime, isanyaboveoneth, colgreat, sortdprime, primeavgdisp);
 	}
 
 	// exercise 9, set 7
