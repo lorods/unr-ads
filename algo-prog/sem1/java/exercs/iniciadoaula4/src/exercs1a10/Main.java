@@ -206,8 +206,12 @@ public class Main {
 				leitorsal = scinf.nextDouble();
 				if(leitorsal<0) break;
 				if(ctrestatis>0) {
-					estatis = Arrays.copyOf(estatis, (ctrestatis+1));
-					conjsal = Arrays.copyOf(conjsal, (ctrestatis+1));
+					double[][] estatsuporte = new double[(ctrestatis+1)][2];
+					for(int i=0;i<ctrestatis;i++) {
+						System.arraycopy(estatis[i],0,estatsuporte[i],0,2);
+					}
+					conjsal = Arrays.copyOf(conjsal,(conjsal.length+1));
+					estatis = estatsuporte;
 				}
 				estatis[ctrestatis][0] = leitorsal;
 				System.out.printf("Insira o número de filhos do habitante nº %d: ",(ctrestatis+1));
@@ -220,8 +224,9 @@ public class Main {
 				ctrestatis++;
 			} while(true);
 			Arrays.sort(conjsal);
-			double medsal = (tots[0]/ctrestatis), medprole = (tots[1]/ctrestatis), porcsalminu = (tots[2]/ctrestatis)*100, maiorsal = conjsal[(conjsal.length-1)];
-			System.out.printf("Estatísticas obtidas pela prefeitura:\nMédia salarial aproximada da população: %.2f\nMédia aproximada do número de filhos na população, per capita: %.2f\nMaior salário encontrado na amostra colhida: %.2f\nPercentual aproximado de pessoas com salário de até R$ 200,00: %.2f\\%\n\n",medsal,medprole,maiorsal,porcsalminu);
+			double medsal = (tots[0]/ctrestatis), porcsalminu = (tots[2]/ctrestatis)*100, maiorsal = conjsal[(conjsal.length-1)];
+			float medprole = ((float) tots[1]/(float) ctrestatis);
+			System.out.printf("Estatísticas obtidas pela prefeitura:\nMédia salarial aproximada da população: %.2f\nMédia aproximada do número de filhos na população, per capita: %.2f\nMaior salário encontrado na amostra colhida: %.2f\nPercentual aproximado de pessoas com salário de até R$ 200,00: %.2f%%\n\n",medsal,medprole,maiorsal,porcsalminu);
 		}
 		case 9 -> {
 			int alt[] = {150,110}, txcres[] = {2,3};
