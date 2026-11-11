@@ -1,6 +1,6 @@
-Carrinho saiu da área delimitada permitida pela lateral esquerda (tendo ele como referência).
+Carrinho saiu da área delimitada permitida pela lateral esquerda (referência: vetor direção carrinho).
 ---
-Carrinho saiu da área delimitada permitida pela lateral direita (tendo ele como referência).
+Carrinho saiu da área delimitada permitida pela lateral direita (referência: vetor direção carrinho).
 ---
 Carrinho bateu em pilar da esquerda.
 ---
