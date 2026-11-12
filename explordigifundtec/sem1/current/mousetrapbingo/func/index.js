@@ -12,10 +12,12 @@ setGlobalOptions({
 	maxInstances: 10
 });
 
+const PLAYER_BOARD_SIZE = 10;
+
 /**
- * Gatilho Firestore que sincroniza automaticamente `results/{playerId}.cardStates`
- * e `scores/{playerId}` (`eventsMatchedSoFar` + `matchedCardIds`) sempre que
- * `occurringEventIds` for atualizado no documento `bingo/{sessionId}`.
+ * Gatilho Firestore que sincroniza automaticamente `results/{playerId}.cardStates`,
+ * `scores/{playerId}` (`eventsMatchedSoFar` + `matchedCardIds`) e o `status` da sessão
+ * (`'live'` ou `'finished'`) sempre que `occurringEventIds` for atualizado no documento `bingo/{sessionId}`.
  */
 export const syncScoresOnOccurringEvents = onDocumentUpdated(
 	'bingo/{sessionId}',
@@ -38,10 +40,9 @@ export const syncScoresOnOccurringEvents = onDocumentUpdated(
 		const sessionRef = event.data.after.ref;
 		const resultsSnap = await sessionRef.collection('results').get();
 
-		if (resultsSnap.empty) return;
-
 		const batch = db.batch();
 		const timestamp = FieldValue.serverTimestamp();
+		let hasCompletedBoard = false;
 
 		for (const playerDoc of resultsSnap.docs) {
 			const playerData = playerDoc.data();
@@ -55,6 +56,10 @@ export const syncScoresOnOccurringEvents = onDocumentUpdated(
 						matchedCardIds.push(id);
 					}
 				}
+			}
+
+			if (matchedCardIds.length >= PLAYER_BOARD_SIZE) {
+				hasCompletedBoard = true;
 			}
 
 			batch.update(playerDoc.ref, {
@@ -75,6 +80,22 @@ export const syncScoresOnOccurringEvents = onDocumentUpdated(
 				{ merge: true }
 			);
 		}
+
+		const nextStatus =
+			hasCompletedBoard || afterData.status === 'finished'
+				? 'finished'
+				: nextEvents.length > 0
+					? 'live'
+					: (afterData.status ?? 'lobby');
+
+		if (afterData.status !== nextStatus) {
+			batch.update(sessionRef, {
+				status: nextStatus,
+				updatedAt: timestamp
+			});
+		}
+
+		if (resultsSnap.empty && afterData.status === nextStatus) return;
 
 		await batch.commit();
 	}

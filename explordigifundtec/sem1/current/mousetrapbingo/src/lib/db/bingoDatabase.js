@@ -6,6 +6,7 @@ import {
 	orderBy,
 	query,
 	serverTimestamp,
+	updateDoc,
 	writeBatch
 } from 'firebase/firestore';
 import { db as defaultDb } from '../firebase/client.js';
@@ -27,6 +28,15 @@ export const SUBCOLLECTIONS = Object.freeze({
 	CARDING: 'carding',
 	RESULTS: 'results',
 	SCORES: 'scores'
+});
+
+/**
+ * Estados possíveis do ciclo de vida do documento `bingo/{sessionId}.status`.
+ */
+export const SESSION_STATUS = Object.freeze({
+	LOBBY: 'lobby',
+	LIVE: 'live',
+	FINISHED: 'finished'
 });
 
 /**
@@ -204,7 +214,7 @@ export class BingoDatabase {
 		const sessionData = {
 			sessionId: this.sessionId,
 			thresholdDistanceMeters,
-			status: 'lobby',
+			status: SESSION_STATUS.LOBBY,
 			occurringEventIds: [],
 			createdAt: timestamp,
 			updatedAt: timestamp
@@ -298,13 +308,83 @@ export class BingoDatabase {
 		batch.set(this.resultDocRef(playerId), resultPayload);
 		batch.set(this.scoreDocRef(playerId), scorePayload);
 
+		if (sessionSnap.exists() && matchedCardIds.length >= PLAYER_BOARD_SIZE) {
+			batch.update(this.sessionRef, {
+				status: SESSION_STATUS.FINISHED,
+				updatedAt: timestamp
+			});
+		}
+
 		await batch.commit();
 		return { result: resultPayload, score: scorePayload };
 	}
 
 	/**
-	 * Registra a ocorrência de um evento (`cardId`) na sessão e sincroniza automaticamente
-	 * `results/{playerId}.cardStates` e `scores/{playerId}` (`eventsMatchedSoFar` + `matchedCardIds`).
+	 * Atualiza explicitamente o status da sessão (`'lobby'`, `'live'` ou `'finished'`).
+	 *
+	 * @param {'lobby' | 'live' | 'finished'} status
+	 */
+	async updateSessionStatus(status) {
+		const validStatuses = new Set(Object.values(SESSION_STATUS));
+		if (!validStatuses.has(status)) {
+			throw new RangeError(
+				`Status de sessão inválido: '${status}'. Esperado um de: ${Array.from(validStatuses).join(', ')}.`
+			);
+		}
+
+		const sessionSnap = await getDoc(this.sessionRef);
+		if (!sessionSnap.exists()) {
+			throw new Error(`Sessão '${this.sessionId}' não encontrada. Chame init() antes.`);
+		}
+
+		const timestamp = serverTimestamp();
+		await updateDoc(this.sessionRef, {
+			status,
+			updatedAt: timestamp
+		});
+
+		return { sessionId: this.sessionId, status };
+	}
+
+	/**
+	 * Inicia a sessão do bingo alterando `status` para `'live'` caso ninguém tenha completado
+	 * uma cartela ainda, ou para `'finished'` caso alguma cartela já tenha atingido os 10 itens.
+	 */
+	async startSession() {
+		const [sessionSnap, leaderboard] = await Promise.all([
+			getDoc(this.sessionRef),
+			this.getLeaderboard()
+		]);
+
+		if (!sessionSnap.exists()) {
+			throw new Error(`Sessão '${this.sessionId}' não encontrada. Chame init() antes.`);
+		}
+
+		const hasCompletedBoard =
+			leaderboard.length > 0 && leaderboard[0].eventsMatchedSoFar >= PLAYER_BOARD_SIZE;
+		const nextStatus = hasCompletedBoard ? SESSION_STATUS.FINISHED : SESSION_STATUS.LIVE;
+
+		await updateDoc(this.sessionRef, {
+			status: nextStatus,
+			updatedAt: serverTimestamp()
+		});
+
+		return { sessionId: this.sessionId, status: nextStatus };
+	}
+
+	/**
+	 * Conclui a sessão do bingo por solicitação do admin (ou encerramento manual),
+	 * alterando `status` para `'finished'`.
+	 */
+	async finishSession() {
+		return this.updateSessionStatus(SESSION_STATUS.FINISHED);
+	}
+
+	/**
+	 * Registra a ocorrência de um evento (`cardId`) na sessão, sincroniza automaticamente
+	 * `results/{playerId}.cardStates` e `scores/{playerId}` (`eventsMatchedSoFar` + `matchedCardIds`),
+	 * e atualiza `status` da sessão para `'live'` (em andamento sem cartela fechada) ou
+	 * `'finished'` (quando pelo menos um jogador fecha os 10 itens da cartela).
 	 *
 	 * @param {number} cardId ID da carta/evento ocorrido (0..19)
 	 */
@@ -330,10 +410,7 @@ export class BingoDatabase {
 		const timestamp = serverTimestamp();
 		const batch = writeBatch(this.db);
 
-		batch.update(this.sessionRef, {
-			occurringEventIds: updatedOccurringIds,
-			updatedAt: timestamp
-		});
+		let hasCompletedBoard = false;
 
 		for (const playerDoc of resultsSnap.docs) {
 			const playerData = playerDoc.data();
@@ -350,6 +427,10 @@ export class BingoDatabase {
 				if (currentStates[id] === CARD_STATE.MATCHED) {
 					matchedCardIds.push(id);
 				}
+			}
+
+			if (matchedCardIds.length >= PLAYER_BOARD_SIZE) {
+				hasCompletedBoard = true;
 			}
 
 			batch.update(playerDoc.ref, {
@@ -370,8 +451,19 @@ export class BingoDatabase {
 			);
 		}
 
+		const nextStatus =
+			hasCompletedBoard || sessionData.status === SESSION_STATUS.FINISHED
+				? SESSION_STATUS.FINISHED
+				: SESSION_STATUS.LIVE;
+
+		batch.update(this.sessionRef, {
+			occurringEventIds: updatedOccurringIds,
+			status: nextStatus,
+			updatedAt: timestamp
+		});
+
 		await batch.commit();
-		return { occurringEventIds: updatedOccurringIds };
+		return { occurringEventIds: updatedOccurringIds, status: nextStatus };
 	}
 
 	/**
