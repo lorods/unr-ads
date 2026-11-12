@@ -129,6 +129,8 @@ export const BINGO_CARDS_SEED = Object.freeze([
 ]);
 
 export const TOTAL_BINGO_CARDS = BINGO_CARDS_SEED.length;
+export const PLAYER_BOARD_SIZE = 10;
+export const EXPECTED_NOT_IN_BOARD_COUNT = TOTAL_BINGO_CARDS - PLAYER_BOARD_SIZE;
 
 /**
  * Substitui o parâmetro "x metros" pelo limiar configurado na sessão, se aplicável.

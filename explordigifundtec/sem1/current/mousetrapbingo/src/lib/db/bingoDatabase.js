@@ -11,10 +11,14 @@ import {
 import { db as defaultDb } from '../firebase/client.js';
 import {
 	BINGO_CARDS_SEED,
+	EXPECTED_NOT_IN_BOARD_COUNT,
+	PLAYER_BOARD_SIZE,
 	TOTAL_BINGO_CARDS,
 	resolveCardText,
 	validateCardSelection
 } from './cardingSeed.js';
+
+export { EXPECTED_NOT_IN_BOARD_COUNT, PLAYER_BOARD_SIZE };
 
 export const BINGO_COLLECTION = 'bingo';
 export const DEFAULT_SESSION_ID = 'default';
@@ -33,6 +37,87 @@ export const CARD_STATE = Object.freeze({
 	UNMARKED: 0,
 	MATCHED: 1
 });
+
+/**
+ * Valida se o vetor `cardStates` de `results/{playerId}` possui as 20 posições do catálogo,
+ * apenas estados válidos (-1, 0, 1) e exatamente 10 ocorrências de `-1` (`CARD_STATE.NOT_IN_BOARD`),
+ * correspondendo aos 10 itens assinalados na cartela do jogador.
+ *
+ * @param {number[]} cardStates
+ * @param {number} [expectedNotInBoardCount=EXPECTED_NOT_IN_BOARD_COUNT]
+ * @returns {{
+ *   valid: boolean,
+ *   notInBoardCount: number,
+ *   selectedCount: number,
+ *   expectedNotInBoardCount: number,
+ *   totalCards: number,
+ *   hasInvalidStates: boolean,
+ *   reason: string | null
+ * }}
+ */
+export function validatePlayerCardStates(
+	cardStates,
+	expectedNotInBoardCount = EXPECTED_NOT_IN_BOARD_COUNT
+) {
+	if (!Array.isArray(cardStates) || cardStates.length !== TOTAL_BINGO_CARDS) {
+		return {
+			valid: false,
+			notInBoardCount: 0,
+			selectedCount: 0,
+			expectedNotInBoardCount,
+			totalCards: TOTAL_BINGO_CARDS,
+			hasInvalidStates: true,
+			reason: `cardStates deve ser um array de ${TOTAL_BINGO_CARDS} posições (recebido: ${Array.isArray(cardStates) ? cardStates.length : typeof cardStates}).`
+		};
+	}
+
+	const validStates = new Set([
+		CARD_STATE.NOT_IN_BOARD,
+		CARD_STATE.UNMARKED,
+		CARD_STATE.MATCHED
+	]);
+
+	let notInBoardCount = 0;
+	let selectedCount = 0;
+	let hasInvalidStates = false;
+
+	for (const state of cardStates) {
+		if (!validStates.has(state)) {
+			hasInvalidStates = true;
+		} else if (state === CARD_STATE.NOT_IN_BOARD) {
+			notInBoardCount += 1;
+		} else {
+			selectedCount += 1;
+		}
+	}
+
+	if (hasInvalidStates) {
+		return {
+			valid: false,
+			notInBoardCount,
+			selectedCount,
+			expectedNotInBoardCount,
+			totalCards: TOTAL_BINGO_CARDS,
+			hasInvalidStates: true,
+			reason: 'cardStates contém valores de estado inválidos (permitidos: -1, 0, 1).'
+		};
+	}
+
+	const valid = notInBoardCount === expectedNotInBoardCount;
+	const expectedSelectedCount = TOTAL_BINGO_CARDS - expectedNotInBoardCount;
+
+	return {
+		valid,
+		notInBoardCount,
+		selectedCount,
+		expectedNotInBoardCount,
+		totalCards: TOTAL_BINGO_CARDS,
+		hasInvalidStates: false,
+		reason: valid
+			? null
+			: `cardStates inválido: esperadas exatamente ${expectedNotInBoardCount} ocorrências de ${CARD_STATE.NOT_IN_BOARD} (${expectedSelectedCount} itens na cartela), mas foram encontradas ${notInBoardCount} (${selectedCount} itens assinalados).`
+	};
+}
 
 /**
  * Componente inicializável de modelagem e operações do banco Firestore para o Mousetrap Bingo.
@@ -142,7 +227,8 @@ export class BingoDatabase {
 
 	/**
 	 * Inicializa um jogador nas subcoleções paralelas `results/{playerId}` e `scores/{playerId}`,
-	 * validando exclusões mútuas (`cardexcludes`) e já sincronizando com `occurringEventIds` caso existam.
+	 * validando a presença exata de 10 ocorrências de `-1` em `cardStates` (10 itens na cartela),
+	 * exclusões mútuas (`cardexcludes`) e sincronizando com `occurringEventIds` caso existam.
 	 *
 	 * @param {object} params
 	 * @param {string} params.playerId
@@ -150,6 +236,26 @@ export class BingoDatabase {
 	 * @param {number[]} params.selectedCardIds IDs (0..19) selecionados para a cartela do jogador
 	 */
 	async initPlayer({ playerId, playerName, selectedCardIds }) {
+		if (!Array.isArray(selectedCardIds)) {
+			throw new TypeError('selectedCardIds deve ser um array de IDs de cartas.');
+		}
+
+		const selectedSet = new Set(selectedCardIds);
+		if (selectedSet.size !== selectedCardIds.length) {
+			throw new Error('Seleção de cartela inválida; existem IDs de cartas duplicados.');
+		}
+
+		const initialCardStates = Array.from({ length: TOTAL_BINGO_CARDS }, (_, id) =>
+			selectedSet.has(id) ? CARD_STATE.UNMARKED : CARD_STATE.NOT_IN_BOARD
+		);
+
+		const stateValidation = validatePlayerCardStates(initialCardStates);
+		if (!stateValidation.valid) {
+			throw new Error(
+				`Inicialização de results/${playerId} inválida: ${stateValidation.reason}`
+			);
+		}
+
 		const validation = validateCardSelection(selectedCardIds);
 		if (!validation.valid) {
 			const pairs = validation.conflicts.map(([a, b]) => `${a} vs ${b}`).join(', ');
@@ -161,9 +267,8 @@ export class BingoDatabase {
 			sessionSnap.exists() ? sessionSnap.data().occurringEventIds ?? [] : []
 		);
 
-		const selectedSet = new Set(selectedCardIds);
-		const cardStates = Array.from({ length: TOTAL_BINGO_CARDS }, (_, id) => {
-			if (!selectedSet.has(id)) return CARD_STATE.NOT_IN_BOARD;
+		const cardStates = initialCardStates.map((state, id) => {
+			if (state === CARD_STATE.NOT_IN_BOARD) return CARD_STATE.NOT_IN_BOARD;
 			return occurringSet.has(id) ? CARD_STATE.MATCHED : CARD_STATE.UNMARKED;
 		});
 
