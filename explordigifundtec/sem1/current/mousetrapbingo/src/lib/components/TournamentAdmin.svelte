@@ -272,8 +272,8 @@
 			);
 
 			const nextIndex = snapshot.results.length + 1;
-			newPlayerId = `equipe_${String(nextIndex + 1).padStart(2, '0')}`;
-			newPlayerName = `Equipe Ratoeira #${nextIndex + 1}`;
+			newPlayerId = `equipe_${String(nextIndex).padStart(2, '0')}`;
+			newPlayerName = `Equipe Ratoeira #${nextIndex}`;
 			selectedCardIdsForPlayer = generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
 		} catch (err) {
 			showFeedback(`Erro ao inicializar jogador: ${err.message}`, 'error');
