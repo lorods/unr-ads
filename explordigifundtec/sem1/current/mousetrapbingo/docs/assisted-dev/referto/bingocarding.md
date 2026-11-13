@@ -28,7 +28,7 @@ O carrinho campeão fez o melhor tempo geral.
 O melhor tempo geral saiu durante a final.
 
 ---
-O melhor tempo geral saiu na primeira rodada classificatória.
+O melhor tempo geral saiu durante a primeira rodada classificatória.
 
 ---
 A diferença na final foi de menos de 1 metro.

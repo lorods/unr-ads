@@ -7,14 +7,14 @@ export const BINGO_CARDS_SEED = Object.freeze([
 		id: 0,
 		alias: 'leftoutofbounds',
 		guireptext:
-			'Carrinho saiu da área delimitada permitida pela lateral esquerda (referência: vetor direção carrinho).',
+			'Carrinho saiu da área delimitada permitida pela lateral esquerda (referência: vetor direção carrinho visto de cima [↑]).',
 		cardexcludes: []
 	},
 	{
 		id: 1,
 		alias: 'rightoutofbounds',
 		guireptext:
-			'Carrinho saiu da área delimitada permitida pela lateral direita (referência: vetor direção carrinho).',
+			'Carrinho saiu da área delimitada permitida pela lateral direita (referência: vetor direção carrinho visto de cima [↑]).',
 		cardexcludes: []
 	},
 	{
@@ -62,13 +62,13 @@ export const BINGO_CARDS_SEED = Object.freeze([
 	{
 		id: 9,
 		alias: 'besttimeinfinal',
-		guireptext: 'O melhor tempo geral saiu na final.',
+		guireptext: 'O melhor tempo geral saiu durante a final.',
 		cardexcludes: [10]
 	},
 	{
 		id: 10,
 		alias: 'besttimeinfirstround',
-		guireptext: 'O melhor tempo geral saiu na primeira rodada classificatória.',
+		guireptext: 'O melhor tempo geral saiu durante a primeira rodada classificatória.',
 		cardexcludes: [9]
 	},
 	{
@@ -85,14 +85,14 @@ export const BINGO_CARDS_SEED = Object.freeze([
 	},
 	{
 		id: 13,
-		alias: 'totaldistoverx',
-		guireptext: 'A distância total percorrida durante o evento foi de mais de x metros.',
+		alias: 'highertotaldistanc',
+		guireptext: 'A distância total percorrida durante o evento foi de mais de 1550 metros.',
 		cardexcludes: [14]
 	},
 	{
 		id: 14,
-		alias: 'totaldistunderx',
-		guireptext: 'A distância total percorrida durante o evento foi de menos de x metros.',
+		alias: 'lowertotaldistanc',
+		guireptext: 'A distância total percorrida durante o evento foi de menos de 1550 metros.',
 		cardexcludes: [13]
 	},
 	{
@@ -115,9 +115,9 @@ export const BINGO_CARDS_SEED = Object.freeze([
 	},
 	{
 		id: 18,
-		alias: 'leadchangedlastround',
+		alias: 'leadchangedlastchance',
 		guireptext:
-			'A liderança geral mudou de mãos durante a última rodada classificatória do evento.',
+			'A liderança geral mudou de mãos durante a final.',
 		cardexcludes: []
 	},
 	{
