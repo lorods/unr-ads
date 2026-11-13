@@ -25,7 +25,7 @@ Nenhuma distância percorrida se repetiu alguma vez.
 O carrinho campeão fez o melhor tempo geral.
 
 ---
-O melhor tempo geral saiu na final.
+O melhor tempo geral saiu durante a final.
 
 ---
 O melhor tempo geral saiu na primeira rodada classificatória.
@@ -52,7 +52,7 @@ O barbante arrebentou ou enroscou no eixo durante o trajeto.
 O líder ao fim da primeira rodada classificatória terminou como campeão geral.
 
 ---
-A liderança geral mudou de mãos em um dos dois disparos da final.
+A liderança geral mudou de mãos durante a final.
 
 ---
 Pelo menos um carrinho melhorou sua marca em todas as rodadas que disputou. 
