@@ -52,7 +52,7 @@ O barbante arrebentou ou enroscou no eixo durante o trajeto.
 O líder ao fim da primeira rodada classificatória terminou como campeão geral.
 
 ---
-A liderança geral mudou de mãos durante a última rodada classificatória do evento.
+A liderança geral mudou de mãos em um dos dois disparos da final.
 
 ---
 Pelo menos um carrinho melhorou sua marca em todas as rodadas que disputou. 
