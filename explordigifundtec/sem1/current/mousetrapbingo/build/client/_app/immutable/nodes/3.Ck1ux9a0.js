@@ -1,0 +1,1 @@
+import"../chunks/D-T-BJi9.js";import{h as t,T as e}from"../chunks/Uik0xeGf.js";import{T as n,$ as a}from"../chunks/DvVQD3gv.js";function s(o){t("1jef3w8",r=>{n(()=>{a.title="Mousetrap Bingo — Administração do Torneio"})}),e(o,{})}export{s as component};

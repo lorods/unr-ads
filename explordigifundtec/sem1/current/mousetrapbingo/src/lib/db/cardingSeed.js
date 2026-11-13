@@ -174,3 +174,44 @@ export function validateCardSelection(selectedCardIds, cardsCatalog = BINGO_CARD
 		conflicts
 	};
 }
+
+/**
+ * Sorteia uma seleção válida de `boardSize` (10) IDs de cartas respeitando todas as restrições
+ * de exclusão mútua (`cardexcludes`).
+ *
+ * @param {number} [boardSize=PLAYER_BOARD_SIZE]
+ * @param {ReadonlyArray<{ id: number, cardexcludes: number[] }>} [cardsCatalog=BINGO_CARDS_SEED]
+ * @returns {number[]} IDs de cartas ordenados crescentemente
+ */
+export function generateValidCardSelection(
+	boardSize = PLAYER_BOARD_SIZE,
+	cardsCatalog = BINGO_CARDS_SEED
+) {
+	const pool = [...cardsCatalog];
+	for (let i = pool.length - 1; i > 0; i -= 1) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[pool[i], pool[j]] = [pool[j], pool[i]];
+	}
+
+	const selected = [];
+	const excluded = new Set();
+
+	for (const card of pool) {
+		if (selected.length >= boardSize) break;
+		if (excluded.has(card.id)) continue;
+
+		selected.push(card.id);
+		for (const conflictId of card.cardexcludes ?? []) {
+			excluded.add(conflictId);
+		}
+	}
+
+	if (selected.length !== boardSize) {
+		throw new Error(
+			`Não foi possível gerar uma cartela válida com ${boardSize} itens a partir do catálogo.`
+		);
+	}
+
+	return selected.sort((a, b) => a - b);
+}
+

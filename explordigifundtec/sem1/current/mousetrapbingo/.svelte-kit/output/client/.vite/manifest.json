@@ -1,0 +1,155 @@
+{
+  ".svelte-kit/generated/client-optimized/app.js": {
+    "file": "_app/immutable/entry/app.D_QNQ407.js",
+    "name": "entry/app",
+    "src": ".svelte-kit/generated/client-optimized/app.js",
+    "isEntry": true,
+    "imports": [
+      "_DvVQD3gv.js",
+      "_-lnI0AcK.js",
+      "_D-T-BJi9.js",
+      "_RzfZt-WM.js",
+      "_Ca8c0X5-.js",
+      "_84TZfMDv.js"
+    ],
+    "dynamicImports": [
+      ".svelte-kit/generated/client-optimized/nodes/0.js",
+      ".svelte-kit/generated/client-optimized/nodes/1.js",
+      ".svelte-kit/generated/client-optimized/nodes/2.js",
+      ".svelte-kit/generated/client-optimized/nodes/3.js",
+      ".svelte-kit/generated/shared/error-template.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/0.js": {
+    "file": "_app/immutable/nodes/0.qZAhiQ6K.js",
+    "name": "nodes/0",
+    "src": ".svelte-kit/generated/client-optimized/nodes/0.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_D-T-BJi9.js",
+      "_DvVQD3gv.js",
+      "_84TZfMDv.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/1.js": {
+    "file": "_app/immutable/nodes/1.BONw01cM.js",
+    "name": "nodes/1",
+    "src": ".svelte-kit/generated/client-optimized/nodes/1.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_D-T-BJi9.js",
+      "_DvVQD3gv.js",
+      "_-lnI0AcK.js",
+      "_3hy9agFo.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/2.js": {
+    "file": "_app/immutable/nodes/2.D3XP8VUg.js",
+    "name": "nodes/2",
+    "src": ".svelte-kit/generated/client-optimized/nodes/2.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_D-T-BJi9.js",
+      "_Uik0xeGf.js",
+      "_DvVQD3gv.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/3.js": {
+    "file": "_app/immutable/nodes/3.Ck1ux9a0.js",
+    "name": "nodes/3",
+    "src": ".svelte-kit/generated/client-optimized/nodes/3.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_D-T-BJi9.js",
+      "_Uik0xeGf.js",
+      "_DvVQD3gv.js"
+    ]
+  },
+  ".svelte-kit/generated/shared/error-template.js": {
+    "file": "_app/immutable/chunks/wbPk3Yxo.js",
+    "name": "error-template",
+    "src": ".svelte-kit/generated/shared/error-template.js",
+    "isDynamicEntry": true
+  },
+  "_-lnI0AcK.js": {
+    "file": "_app/immutable/chunks/-lnI0AcK.js",
+    "name": "render",
+    "imports": [
+      "_DvVQD3gv.js",
+      "_D-T-BJi9.js"
+    ]
+  },
+  "_3hy9agFo.js": {
+    "file": "_app/immutable/chunks/3hy9agFo.js",
+    "name": "state.svelte",
+    "imports": [
+      "_RzfZt-WM.js",
+      "_DvVQD3gv.js"
+    ]
+  },
+  "_84TZfMDv.js": {
+    "file": "_app/immutable/chunks/84TZfMDv.js",
+    "name": "branches",
+    "imports": [
+      "_DvVQD3gv.js"
+    ]
+  },
+  "_Ca8c0X5-.js": {
+    "file": "_app/immutable/chunks/Ca8c0X5-.js",
+    "name": "this",
+    "imports": [
+      "_DvVQD3gv.js",
+      "_84TZfMDv.js"
+    ]
+  },
+  "_D-T-BJi9.js": {
+    "file": "_app/immutable/chunks/D-T-BJi9.js",
+    "name": "disclose-version",
+    "imports": [
+      "_DvVQD3gv.js"
+    ]
+  },
+  "_DvVQD3gv.js": {
+    "file": "_app/immutable/chunks/DvVQD3gv.js",
+    "name": "effects"
+  },
+  "_RzfZt-WM.js": {
+    "file": "_app/immutable/chunks/RzfZt-WM.js",
+    "name": "index-client",
+    "imports": [
+      "_DvVQD3gv.js"
+    ]
+  },
+  "_TournamentAdmin.CYg9zmKO.css": {
+    "file": "_app/immutable/assets/TournamentAdmin.CYg9zmKO.css",
+    "src": "_TournamentAdmin.CYg9zmKO.css"
+  },
+  "_Uik0xeGf.js": {
+    "file": "_app/immutable/chunks/Uik0xeGf.js",
+    "name": "TournamentAdmin",
+    "imports": [
+      "_DvVQD3gv.js",
+      "_D-T-BJi9.js",
+      "_RzfZt-WM.js",
+      "_-lnI0AcK.js",
+      "_Ca8c0X5-.js"
+    ],
+    "css": [
+      "_app/immutable/assets/TournamentAdmin.CYg9zmKO.css"
+    ]
+  },
+  "node_modules/@sveltejs/kit/src/runtime/client/entry.js": {
+    "file": "_app/immutable/entry/start.JReyq9Yu.js",
+    "name": "entry/start",
+    "src": "node_modules/@sveltejs/kit/src/runtime/client/entry.js",
+    "isEntry": true,
+    "imports": [
+      "_DvVQD3gv.js",
+      "_3hy9agFo.js"
+    ]
+  }
+}

@@ -41,7 +41,6 @@ declare module '$env/static/private' {
 	export const ALLUSERSPROFILE: string;
 	export const APPDATA: string;
 	export const ChocolateyInstall: string;
-	export const ChocolateyLastPathUpdate: string;
 	export const COLOR: string;
 	export const CommonProgramFiles: string;
 	export const CommonProgramW6432: string;
@@ -52,12 +51,9 @@ declare module '$env/static/private' {
 	export const HOME: string;
 	export const HOMEDRIVE: string;
 	export const HOMEPATH: string;
-	export const HOMESHARE: string;
 	export const INIT_CWD: string;
 	export const LOCALAPPDATA: string;
 	export const LOGONSERVER: string;
-	export const MSMPI_BENCHMARKS: string;
-	export const MSMPI_BIN: string;
 	export const NODE: string;
 	export const NODE_ENV: string;
 	export const npm_command: string;
@@ -94,6 +90,7 @@ declare module '$env/static/private' {
 	export const ProgramW6432: string;
 	export const PROMPT: string;
 	export const PSModulePath: string;
+	export const PT8HOME: string;
 	export const PUBLIC: string;
 	export const SESSIONNAME: string;
 	export const SystemDrive: string;
@@ -105,10 +102,12 @@ declare module '$env/static/private' {
 	export const USERDOMAIN_ROAMINGPROFILE: string;
 	export const USERNAME: string;
 	export const USERPROFILE: string;
+	export const VBOX_MSI_INSTALL_PATH: string;
 	export const windir: string;
 	export const WSLENV: string;
 	export const WT_PROFILE_ID: string;
 	export const WT_SESSION: string;
+	export const ZES_ENABLE_SYSMAN: string;
 }
 
 /**
@@ -198,7 +197,6 @@ declare module '$env/dynamic/private' {
 		ALLUSERSPROFILE: string;
 		APPDATA: string;
 		ChocolateyInstall: string;
-		ChocolateyLastPathUpdate: string;
 		COLOR: string;
 		CommonProgramFiles: string;
 		CommonProgramW6432: string;
@@ -209,12 +207,9 @@ declare module '$env/dynamic/private' {
 		HOME: string;
 		HOMEDRIVE: string;
 		HOMEPATH: string;
-		HOMESHARE: string;
 		INIT_CWD: string;
 		LOCALAPPDATA: string;
 		LOGONSERVER: string;
-		MSMPI_BENCHMARKS: string;
-		MSMPI_BIN: string;
 		NODE: string;
 		NODE_ENV: string;
 		npm_command: string;
@@ -251,6 +246,7 @@ declare module '$env/dynamic/private' {
 		ProgramW6432: string;
 		PROMPT: string;
 		PSModulePath: string;
+		PT8HOME: string;
 		PUBLIC: string;
 		SESSIONNAME: string;
 		SystemDrive: string;
@@ -262,10 +258,12 @@ declare module '$env/dynamic/private' {
 		USERDOMAIN_ROAMINGPROFILE: string;
 		USERNAME: string;
 		USERPROFILE: string;
+		VBOX_MSI_INSTALL_PATH: string;
 		windir: string;
 		WSLENV: string;
 		WT_PROFILE_ID: string;
 		WT_SESSION: string;
+		ZES_ENABLE_SYSMAN: string;
 		[key: `PUBLIC_${string}`]: undefined;
 		[key: `${string}`]: string | undefined;
 	}
