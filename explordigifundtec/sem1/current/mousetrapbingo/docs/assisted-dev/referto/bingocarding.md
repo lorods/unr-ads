@@ -37,10 +37,10 @@ A diferença na final foi de menos de 1 metro.
 A diferença na final foi de mais de 1 metro.
 
 ---
-A distância total percorrida durante o evento foi de mais de x metros.
+A distância total percorrida durante o evento foi de mais de qtdlancamento * hipotmediadistanc — 62\*25 (1550) — metros.
 
 ---
-A distância total percorrida durante o evento foi de menos de x metros.
+A distância total percorrida durante o evento foi de menos de qtdlancamento * hipotmediadistanc — 62\*25 (1550) — metros.
 
 ---
 A ratoeira se desarmou sozinha ou sem que a equipe quisesse.
