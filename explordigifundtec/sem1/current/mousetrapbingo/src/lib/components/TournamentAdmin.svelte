@@ -115,19 +115,20 @@
 		};
 	});
 
-	async function handleInitDb(overwrite = false) {
+	async function handleInitDb(overwrite = false, initialStatus = SESSION_STATUS.LOBBY) {
 		if (!dbInstance) return;
-		busyAction = overwrite ? 'reinit_db' : 'init_db';
+		busyAction = overwrite ? 'reinit_db' : initialStatus === SESSION_STATUS.CREATED ? 'create_session' : 'init_db';
 		try {
 			const res = await dbInstance.init({
 				thresholdDistanceMeters: Number(thresholdDistanceMeters) || 1550,
-				overwrite
+				overwrite,
+				initialStatus
 			});
 			if (res.initialized) {
 				showFeedback(
 					overwrite
-						? `Banco e catálogo reinicializados para a sessão '${res.sessionId}'.`
-						: `Banco e subcoleção 'carding' inicializados na sessão '${res.sessionId}'.`,
+						? `Banco e catálogo reinicializados para a sessão '${res.sessionId}' (status: ${initialStatus.toUpperCase()}).`
+						: `Sessão '${res.sessionId}' e subcoleção 'carding' inicializadas com status '${initialStatus.toUpperCase()}'.`,
 					'success'
 				);
 			} else {
@@ -429,6 +430,13 @@
 		</div>
 
 		<div class="status-cluster">
+			<a href="/" class="btn btn-sm btn-outline" style="text-decoration: none;">
+				🎯 Visão do Participante (SPA)
+			</a>
+			<a href="/history" class="btn btn-sm btn-outline" style="text-decoration: none;">
+				📜 Sessões Anteriores
+			</a>
+
 			<div class="persistence-pill {snapshot.persistenceMode === 'firestore' ? 'firestore' : 'local'}">
 				<span class="dot"></span>
 				{#if snapshot.persistenceMode === 'firestore'}
@@ -506,10 +514,16 @@
 		</div>
 
 		<div class="manual-actions-grid">
-			<button type="button" class="btn btn-secondary" disabled={busyAction !=='' } onclick={()=>
-				handleInitDb(false)}
+			<button type="button" class="btn btn-outline" disabled={busyAction !=='' } onclick={()=>
+				handleInitDb(true, SESSION_STATUS.CREATED)}
 				>
-				🗄️ Inicializar DB & Catálogo
+				◌ Criar Sessão em Espera (Pré-Lobby)
+			</button>
+
+			<button type="button" class="btn btn-secondary" disabled={busyAction !=='' } onclick={()=>
+				handleInitDb(false, SESSION_STATUS.LOBBY)}
+				>
+				🗄️ Inicializar DB & Ativar Lobby (LOBBY)
 			</button>
 
 			<button type="button" class="btn btn-start" disabled={busyAction !=='' ||

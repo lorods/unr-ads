@@ -1,9 +1,9 @@
 <script>
-	import TournamentAdmin from '$lib/components/TournamentAdmin.svelte';
+	import ParticipantBingoExperience from '$lib/components/ParticipantBingoExperience.svelte';
 </script>
 
 <svelte:head>
-	<title>Mousetrap Bingo — Administração do Torneio</title>
+	<title>Mousetrap Bingo — Central do Participante</title>
 </svelte:head>
 
-<TournamentAdmin />
+<ParticipantBingoExperience initialTab="session" />
