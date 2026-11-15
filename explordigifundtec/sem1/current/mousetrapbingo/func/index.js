@@ -83,6 +83,7 @@ export const syncScoresOnOccurringEvents = onDocumentUpdated(
 				anyResultChanged = true;
 				batch.update(playerDoc.ref, {
 					cardStates,
+					nameLocked: true,
 					updatedAt: timestamp
 				});
 
@@ -92,6 +93,8 @@ export const syncScoresOnOccurringEvents = onDocumentUpdated(
 					{
 						playerId: playerDoc.id,
 						playerName,
+						participantType: playerData.participantType ?? 'individual',
+						teamId: playerData.teamId ?? null,
 						eventsMatchedSoFar: matchedCardIds.length,
 						matchedCardIds,
 						updatedAt: timestamp

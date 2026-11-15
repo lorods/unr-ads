@@ -19,8 +19,23 @@ import {
 	resolveCardText,
 	validateCardSelection
 } from './cardingSeed.js';
+import {
+	ORIGINALITY_ERROR_MESSAGE,
+	PARTICIPANT_TYPE,
+	PARTICIPATION_CREDIT_DISCLAIMER,
+	isParticipantNameLocked,
+	validateParticipantNameOriginality
+} from './participantValidation.js';
+import { REGISTERED_TOURNAMENT_TEAMS } from './tournamentTeamsSeed.js';
 
-export { EXPECTED_NOT_IN_BOARD_COUNT, PLAYER_BOARD_SIZE };
+export {
+	EXPECTED_NOT_IN_BOARD_COUNT,
+	ORIGINALITY_ERROR_MESSAGE,
+	PARTICIPANT_TYPE,
+	PARTICIPATION_CREDIT_DISCLAIMER,
+	PLAYER_BOARD_SIZE,
+	REGISTERED_TOURNAMENT_TEAMS
+};
 
 export const BINGO_COLLECTION = 'bingo';
 export const DEFAULT_SESSION_ID = 'default';
@@ -33,13 +48,43 @@ export const SUBCOLLECTIONS = Object.freeze({
 });
 
 /**
- * Estados possíveis do ciclo de vida do documento `bingo/{sessionId}.status`.
+ * Estados possíveis do ciclo de vida do documento `bingo/{sessionId}.status` (CHECKPOINT 4a..4d):
+ * - `CREATED`: sessão recém-criada aguardando ativação para "lobby"
+ * - `LOBBY`: sessão ativada em espera pelo início ("live")
+ * - `LIVE`: sessão do bingo em andamento (nomes de participação inalteráveis)
+ * - `FINISHED`: sessão do bingo finalizada
  */
 export const SESSION_STATUS = Object.freeze({
+	CREATED: 'created',
 	LOBBY: 'lobby',
 	LIVE: 'live',
 	FINISHED: 'finished'
 });
+
+/**
+ * Normaliza valores de status.
+ *
+ * @param {string | null | undefined} status
+ * @returns {'created' | 'lobby' | 'live' | 'finished' | null}
+ */
+export function normalizeSessionStatus(status) {
+	if (!status) return null;
+	if (status === SESSION_STATUS.LIVE) return SESSION_STATUS.LIVE;
+	if (status === SESSION_STATUS.CREATED) return SESSION_STATUS.CREATED;
+	if (status === SESSION_STATUS.LOBBY) return SESSION_STATUS.LOBBY;
+	if (status === SESSION_STATUS.FINISHED) return SESSION_STATUS.FINISHED;
+	return null;
+}
+
+/**
+ * Indica se o status informado representa uma sessão em andamento (`'live'`).
+ *
+ * @param {string | null | undefined} status
+ * @returns {boolean}
+ */
+export function isSessionLive(status) {
+	return status === SESSION_STATUS.LIVE;
+}
 
 /**
  * Estados possíveis para cada posição i (0..19) de `results/{playerId}.cardStates`.
@@ -78,6 +123,9 @@ export const LOG_OPERATION_LABELS = Object.freeze({
 	[LOG_OPERATION_TYPE.SESSION_FINISHED]: 'Encerramento de sessão'
 });
 
+const STORAGE_KEY_PREFIX = 'mousetrapbingo_state_';
+const SESSIONS_INDEX_STORAGE_KEY = 'mousetrapbingo_sessions_index';
+
 /**
  * Armazenamento local em memória (sincronizado com localStorage no navegador)
  * utilizado quando variáveis de ambiente do Firebase não estão configuradas.
@@ -94,7 +142,47 @@ const localListeners = new Map();
 let logSequenceCounter = 0;
 
 function getStorageKey(sessionId) {
-	return `mousetrapbingo_state_${sessionId}`;
+	return `${STORAGE_KEY_PREFIX}${sessionId}`;
+}
+
+function registerSessionIdInLocalIndex(sessionId) {
+	if (!sessionId || typeof window === 'undefined' || !window.localStorage) return;
+	try {
+		const raw = window.localStorage.getItem(SESSIONS_INDEX_STORAGE_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		const set = new Set(Array.isArray(parsed) ? parsed : []);
+		set.add(sessionId);
+		window.localStorage.setItem(SESSIONS_INDEX_STORAGE_KEY, JSON.stringify(Array.from(set)));
+	} catch {
+		// Ignora falha de escrita no índice de sessões
+	}
+}
+
+function listKnownLocalSessionIds() {
+	const ids = new Set(localSessionsStore.keys());
+	if (typeof window !== 'undefined' && window.localStorage) {
+		try {
+			const rawIndex = window.localStorage.getItem(SESSIONS_INDEX_STORAGE_KEY);
+			if (rawIndex) {
+				const parsed = JSON.parse(rawIndex);
+				if (Array.isArray(parsed)) {
+					for (const id of parsed) {
+						if (typeof id === 'string' && id.trim()) ids.add(id.trim());
+					}
+				}
+			}
+			for (let i = 0; i < window.localStorage.length; i += 1) {
+				const key = window.localStorage.key(i);
+				if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
+					const sessionId = key.slice(STORAGE_KEY_PREFIX.length);
+					if (sessionId) ids.add(sessionId);
+				}
+			}
+		} catch {
+			// Ignora erro de leitura do localStorage
+		}
+	}
+	return Array.from(ids);
 }
 
 function getOrCreateLocalSessionStore(sessionId) {
@@ -105,6 +193,9 @@ function getOrCreateLocalSessionStore(sessionId) {
 				const raw = window.localStorage.getItem(getStorageKey(sessionId));
 				if (raw) {
 					const parsed = JSON.parse(raw);
+					if (parsed.session?.status === 'live') {
+						parsed.session.status = SESSION_STATUS.LIVE;
+					}
 					restored = {
 						session: parsed.session ?? null,
 						carding: new Map(parsed.carding ?? []),
@@ -146,6 +237,9 @@ function persistLocalSessionStore(sessionId) {
 				logs: store.logs
 			});
 			window.localStorage.setItem(getStorageKey(sessionId), serialized);
+			if (store.session) {
+				registerSessionIdInLocalIndex(sessionId);
+			}
 		} catch {
 			// Ignora erro de quota ou serialização
 		}
@@ -201,6 +295,26 @@ export function sortLogsChronologically(logs) {
 		if (timeDiff !== 0) return timeDiff;
 		return (a.seq ?? 0) - (b.seq ?? 0);
 	});
+}
+
+/**
+ * Extrai listas derivadas de `selectedCardIds` e `unselectedCardIds` a partir de `cardStates`.
+ *
+ * @param {number[]} cardStates
+ */
+export function extractBoardSelectionFromStates(cardStates) {
+	const selectedCardIds = [];
+	const unselectedCardIds = [];
+	if (Array.isArray(cardStates)) {
+		cardStates.forEach((state, cardId) => {
+			if (state === CARD_STATE.NOT_IN_BOARD) {
+				unselectedCardIds.push(cardId);
+			} else {
+				selectedCardIds.push(cardId);
+			}
+		});
+	}
+	return { selectedCardIds, unselectedCardIds };
 }
 
 /**
@@ -290,8 +404,8 @@ export function validatePlayerCardStates(
  * Estrutura gerenciada:
  * bingo/{sessionId}
  *  ├── carding/card_{id}   -> { id, alias, guireptext, cardexcludes }
- *  ├── results/{playerId}  -> { playerId, playerName, cardStates: number[20], updatedAt }
- *  ├── scores/{playerId}   -> { playerId, playerName, eventsMatchedSoFar: number, matchedCardIds: number[], updatedAt }
+ *  ├── results/{playerId}  -> { playerId, playerName, participantType, teamId, selectedCardIds, unselectedCardIds, markedCardIds, cardStates: number[20], credentials, nameLocked, updatedAt }
+ *  ├── scores/{playerId}   -> { playerId, playerName, participantType, teamId, eventsMatchedSoFar: number, matchedCardIds: number[], updatedAt }
  *  └── logs/{logId}        -> { id, type, label, message, details, timestampIso, timestampMs, seq, createdAt }
  */
 export class BingoDatabase {
@@ -422,8 +536,16 @@ export class BingoDatabase {
 	 * @param {object} [options]
 	 * @param {number} [options.thresholdDistanceMeters=1550] Valor de 'x' para as cartas 13 e 14
 	 * @param {boolean} [options.overwrite=false] Se verdadeiro, recria a sessão mesmo se já existir
+	 * @param {'created' | 'lobby'} [options.initialStatus=SESSION_STATUS.LOBBY] Status inicial da sessão criada
 	 */
-	async init({ thresholdDistanceMeters = 1550, overwrite = false } = {}) {
+	async init({
+		thresholdDistanceMeters = 1550,
+		overwrite = false,
+		initialStatus = SESSION_STATUS.LOBBY
+	} = {}) {
+		const resolvedStatus =
+			initialStatus === SESSION_STATUS.CREATED ? SESSION_STATUS.CREATED : SESSION_STATUS.LOBBY;
+
 		if (this.useLocalFallback) {
 			const store = getOrCreateLocalSessionStore(this.sessionId);
 			if (!overwrite && store.session) {
@@ -434,8 +556,9 @@ export class BingoDatabase {
 			const sessionData = {
 				sessionId: this.sessionId,
 				thresholdDistanceMeters,
-				status: SESSION_STATUS.LOBBY,
+				status: resolvedStatus,
 				occurringEventIds: [],
+				registeredTeams: REGISTERED_TOURNAMENT_TEAMS.map((t) => ({ ...t })),
 				createdAt: nowIso,
 				updatedAt: nowIso
 			};
@@ -459,10 +582,10 @@ export class BingoDatabase {
 			await this._recordLogs([
 				{
 					type: LOG_OPERATION_TYPE.DB_INITIALIZED,
-					message: `DB inicializada: sessão 'bingo/${this.sessionId}' configurada com status '${SESSION_STATUS.LOBBY}' (limiar: ${thresholdDistanceMeters}m).`,
+					message: `DB inicializada: sessão 'bingo/${this.sessionId}' configurada com status '${resolvedStatus}' (limiar: ${thresholdDistanceMeters}m).`,
 					details: {
 						path: `${BINGO_COLLECTION}/${this.sessionId}`,
-						status: SESSION_STATUS.LOBBY,
+						status: resolvedStatus,
 						thresholdDistanceMeters,
 						overwrite
 					}
@@ -503,8 +626,9 @@ export class BingoDatabase {
 		const sessionData = {
 			sessionId: this.sessionId,
 			thresholdDistanceMeters,
-			status: SESSION_STATUS.LOBBY,
+			status: resolvedStatus,
 			occurringEventIds: [],
+			registeredTeams: REGISTERED_TOURNAMENT_TEAMS.map((t) => ({ ...t })),
 			createdAt: timestamp,
 			updatedAt: timestamp
 		};
@@ -524,10 +648,10 @@ export class BingoDatabase {
 			[
 				{
 					type: LOG_OPERATION_TYPE.DB_INITIALIZED,
-					message: `DB inicializada: sessão 'bingo/${this.sessionId}' configurada com status '${SESSION_STATUS.LOBBY}' (limiar: ${thresholdDistanceMeters}m).`,
+					message: `DB inicializada: sessão 'bingo/${this.sessionId}' configurada com status '${resolvedStatus}' (limiar: ${thresholdDistanceMeters}m).`,
 					details: {
 						path: `${BINGO_COLLECTION}/${this.sessionId}`,
-						status: SESSION_STATUS.LOBBY,
+						status: resolvedStatus,
 						thresholdDistanceMeters,
 						overwrite
 					}
@@ -560,16 +684,38 @@ export class BingoDatabase {
 	}
 
 	/**
+	 * Ativa a sessão para o estado `'lobby'` (transição de `'created'` -> `'lobby'`, ou reabertura do lobby).
+	 */
+	async activateLobby() {
+		return this.updateSessionStatus(SESSION_STATUS.LOBBY, { reason: 'activate_lobby' });
+	}
+
+	/**
 	 * Inicializa um jogador nas subcoleções paralelas `results/{playerId}` e `scores/{playerId}`,
 	 * validando a presença exata de 10 ocorrências de `-1` em `cardStates` (10 itens na cartela),
-	 * exclusões mútuas (`cardexcludes`) e sincronizando com `occurringEventIds` caso existam.
+	 * exclusões mútuas (`cardexcludes`), originalidade nominal (quando `enforceOriginality: true`)
+	 * e sincronizando com `occurringEventIds` caso existam.
 	 *
 	 * @param {object} params
 	 * @param {string} params.playerId
 	 * @param {string} params.playerName
 	 * @param {number[]} params.selectedCardIds IDs (0..19) selecionados para a cartela do jogador
+	 * @param {'team' | 'individual'} [params.participantType='individual']
+	 * @param {string | null} [params.teamId=null]
+	 * @param {number[]} [params.markedCardIds=[]] IDs de cartas marcadas manualmente pelo participante
+	 * @param {object | null} [params.credentials=null] Pacote criptografado de nome e passphrase gerado no backend
+	 * @param {boolean} [params.enforceOriginality=false] Se verdadeiro, valida a regra dos 75% de palavras para avulsos
 	 */
-	async initPlayer({ playerId, playerName, selectedCardIds }) {
+	async initPlayer({
+		playerId,
+		playerName,
+		selectedCardIds,
+		participantType = PARTICIPANT_TYPE.INDIVIDUAL,
+		teamId = null,
+		markedCardIds = [],
+		credentials = null,
+		enforceOriginality = false
+	}) {
 		if (!Array.isArray(selectedCardIds)) {
 			throw new TypeError('selectedCardIds deve ser um array de IDs de cartas.');
 		}
@@ -597,9 +743,45 @@ export class BingoDatabase {
 		}
 
 		const sortedSelectedIds = [...selectedCardIds].sort((a, b) => a - b);
+		const unselectedCardIds = Array.from({ length: TOTAL_BINGO_CARDS }, (_, id) => id).filter(
+			(id) => !selectedSet.has(id)
+		);
+		const cleanMarkedCardIds = Array.isArray(markedCardIds)
+			? Array.from(
+				new Set(
+					markedCardIds.filter(
+						(id) => Number.isInteger(id) && id >= 0 && id < TOTAL_BINGO_CARDS
+					)
+				)
+			).sort((a, b) => a - b)
+			: [];
 
 		if (this.useLocalFallback) {
 			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const existingPlayer = store.results.get(playerId);
+			const currentStatus = store.session?.status ?? null;
+
+			if (
+				existingPlayer &&
+				isParticipantNameLocked(currentStatus) &&
+				existingPlayer.playerName !== playerName
+			) {
+				throw new Error(
+					'O nome de participação não pode ser alterado após a sessão receber o estado "live".'
+				);
+			}
+
+			if (enforceOriginality && participantType === PARTICIPANT_TYPE.INDIVIDUAL) {
+				const originality = validateParticipantNameOriginality(
+					playerName,
+					Array.from(store.results.values()),
+					{ excludePlayerId: playerId, includeRegisteredTeams: true }
+				);
+				if (!originality.valid) {
+					throw new Error(originality.error ?? ORIGINALITY_ERROR_MESSAGE);
+				}
+			}
+
 			const occurringSet = new Set(store.session?.occurringEventIds ?? []);
 
 			const cardStates = initialCardStates.map((state, id) => {
@@ -616,13 +798,25 @@ export class BingoDatabase {
 			const resultPayload = {
 				playerId,
 				playerName,
+				participantType,
+				teamId: teamId ?? null,
+				selectedCardIds: sortedSelectedIds,
+				unselectedCardIds,
+				markedCardIds:
+					cleanMarkedCardIds.length > 0
+						? cleanMarkedCardIds
+						: (existingPlayer?.markedCardIds ?? []),
 				cardStates,
+				credentials: credentials ?? existingPlayer?.credentials ?? null,
+				nameLocked: isParticipantNameLocked(currentStatus),
 				updatedAt: nowIso
 			};
 
 			const scorePayload = {
 				playerId,
 				playerName,
+				participantType,
+				teamId: teamId ?? null,
 				eventsMatchedSoFar: matchedCardIds.length,
 				matchedCardIds,
 				updatedAt: nowIso
@@ -634,8 +828,8 @@ export class BingoDatabase {
 			const logEntries = [
 				{
 					type: LOG_OPERATION_TYPE.PLAYER_INITIALIZED,
-					message: `Jogador inicializado: '${playerName}' (ID: ${playerId}) registrado na sessão '${this.sessionId}'.`,
-					details: { playerId, playerName }
+					message: `Jogador inicializado: '${playerName}' (ID: ${playerId}, tipo: ${participantType}) registrado na sessão '${this.sessionId}'.`,
+					details: { playerId, playerName, participantType, teamId }
 				},
 				{
 					type: LOG_OPERATION_TYPE.CARDS_INITIALIZED,
@@ -644,6 +838,7 @@ export class BingoDatabase {
 						playerId,
 						playerName,
 						selectedCardIds: sortedSelectedIds,
+						unselectedCardIds,
 						cardStates
 					}
 				},
@@ -692,9 +887,39 @@ export class BingoDatabase {
 			return { result: resultPayload, score: scorePayload };
 		}
 
-		const sessionSnap = await getDoc(this.sessionRef);
+		const [sessionSnap, existingResultsSnap] = await Promise.all([
+			getDoc(this.sessionRef),
+			enforceOriginality ? getDocs(this.resultsColRef) : Promise.resolve(null)
+		]);
+
+		const currentStatus = sessionSnap.exists() ? sessionSnap.data().status : null;
+
+		if (enforceOriginality && participantType === PARTICIPANT_TYPE.INDIVIDUAL) {
+			const existingDocs = existingResultsSnap
+				? existingResultsSnap.docs.map((d) => d.data())
+				: [];
+			const existingSelf = existingDocs.find((p) => p.playerId === playerId);
+			if (
+				existingSelf &&
+				isParticipantNameLocked(currentStatus) &&
+				existingSelf.playerName !== playerName
+			) {
+				throw new Error(
+					'O nome de participação não pode ser alterado após a sessão receber o estado "live".'
+				);
+			}
+
+			const originality = validateParticipantNameOriginality(playerName, existingDocs, {
+				excludePlayerId: playerId,
+				includeRegisteredTeams: true
+			});
+			if (!originality.valid) {
+				throw new Error(originality.error ?? ORIGINALITY_ERROR_MESSAGE);
+			}
+		}
+
 		const occurringSet = new Set(
-			sessionSnap.exists() ? sessionSnap.data().occurringEventIds ?? [] : []
+			sessionSnap.exists() ? (sessionSnap.data().occurringEventIds ?? []) : []
 		);
 
 		const cardStates = initialCardStates.map((state, id) => {
@@ -713,13 +938,22 @@ export class BingoDatabase {
 		const resultPayload = {
 			playerId,
 			playerName,
+			participantType,
+			teamId: teamId ?? null,
+			selectedCardIds: sortedSelectedIds,
+			unselectedCardIds,
+			markedCardIds: cleanMarkedCardIds,
 			cardStates,
+			credentials: credentials ?? null,
+			nameLocked: isParticipantNameLocked(currentStatus),
 			updatedAt: timestamp
 		};
 
 		const scorePayload = {
 			playerId,
 			playerName,
+			participantType,
+			teamId: teamId ?? null,
 			eventsMatchedSoFar: matchedCardIds.length,
 			matchedCardIds,
 			updatedAt: timestamp
@@ -731,8 +965,8 @@ export class BingoDatabase {
 		const logEntries = [
 			{
 				type: LOG_OPERATION_TYPE.PLAYER_INITIALIZED,
-				message: `Jogador inicializado: '${playerName}' (ID: ${playerId}) registrado na sessão '${this.sessionId}'.`,
-				details: { playerId, playerName }
+				message: `Jogador inicializado: '${playerName}' (ID: ${playerId}, tipo: ${participantType}) registrado na sessão '${this.sessionId}'.`,
+				details: { playerId, playerName, participantType, teamId }
 			},
 			{
 				type: LOG_OPERATION_TYPE.CARDS_INITIALIZED,
@@ -741,6 +975,7 @@ export class BingoDatabase {
 					playerId,
 					playerName,
 					selectedCardIds: sortedSelectedIds,
+					unselectedCardIds,
 					cardStates
 				}
 			},
@@ -790,16 +1025,388 @@ export class BingoDatabase {
 	}
 
 	/**
-	 * Atualiza explicitamente o status da sessão (`'lobby'`, `'live'` ou `'finished'`).
+	 * Atualiza a seleção das 10 cartas da cartela de um participante já cadastrado
+	 * (permitido enquanto a sessão ainda não entrou em `'live'` ou `'finished'`).
 	 *
-	 * @param {'lobby' | 'live' | 'finished'} status
+	 * @param {object} params
+	 * @param {string} params.playerId
+	 * @param {number[]} params.selectedCardIds
+	 */
+	async updatePlayerBoard({ playerId, selectedCardIds }) {
+		if (this.useLocalFallback) {
+			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const existing = store.results.get(playerId);
+			if (!existing) {
+				throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+			}
+			if (isParticipantNameLocked(store.session?.status)) {
+				throw new Error(
+					'A montagem da cartela não pode ser alterada após a sessão atingir o estado "live".'
+				);
+			}
+			return this.initPlayer({
+				playerId,
+				playerName: existing.playerName,
+				selectedCardIds,
+				participantType: existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+				teamId: existing.teamId ?? null,
+				markedCardIds: existing.markedCardIds ?? [],
+				credentials: existing.credentials ?? null
+			});
+		}
+
+		const [sessionSnap, playerSnap] = await Promise.all([
+			getDoc(this.sessionRef),
+			getDoc(this.resultDocRef(playerId))
+		]);
+
+		if (!playerSnap.exists()) {
+			throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+		}
+
+		const status = sessionSnap.exists() ? sessionSnap.data().status : null;
+		if (isParticipantNameLocked(status)) {
+			throw new Error(
+				'A montagem da cartela não pode ser alterada após a sessão atingir o estado "live".'
+			);
+		}
+
+		const existing = playerSnap.data();
+		return this.initPlayer({
+			playerId,
+			playerName: existing.playerName,
+			selectedCardIds,
+			participantType: existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+			teamId: existing.teamId ?? null,
+			markedCardIds: existing.markedCardIds ?? [],
+			credentials: existing.credentials ?? null
+		});
+	}
+
+	/**
+	 * Atualiza as marcações manuais (`markedCardIds`) da cartela de um participante
+	 * (CHECKPOINT 4e: permite marcar, reacessar e consultar a qualquer momento posterior à criação).
+	 *
+	 * @param {object} params
+	 * @param {string} params.playerId
+	 * @param {number[]} params.markedCardIds
+	 */
+	async updatePlayerMarkedCards({ playerId, markedCardIds }) {
+		if (!Array.isArray(markedCardIds)) {
+			throw new TypeError('markedCardIds deve ser um array de IDs de cartas.');
+		}
+
+		const cleanMarked = Array.from(
+			new Set(
+				markedCardIds.filter(
+					(id) => Number.isInteger(id) && id >= 0 && id < TOTAL_BINGO_CARDS
+				)
+			)
+		).sort((a, b) => a - b);
+
+		if (this.useLocalFallback) {
+			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const existing = store.results.get(playerId);
+			if (!existing) {
+				throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+			}
+
+			const nowIso = new Date().toISOString();
+			const updated = {
+				...existing,
+				markedCardIds: cleanMarked,
+				updatedAt: nowIso
+			};
+			store.results.set(playerId, updated);
+			persistLocalSessionStore(this.sessionId);
+			return updated;
+		}
+
+		const playerSnap = await getDoc(this.resultDocRef(playerId));
+		if (!playerSnap.exists()) {
+			throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+		}
+
+		const timestamp = serverTimestamp();
+		await updateDoc(this.resultDocRef(playerId), {
+			markedCardIds: cleanMarked,
+			updatedAt: timestamp
+		});
+
+		return {
+			...playerSnap.data(),
+			markedCardIds: cleanMarked,
+			updatedAt: timestamp
+		};
+	}
+
+	/**
+	 * Alterna a marcação manual de uma carta específica (`cardId`) para o participante.
+	 *
+	 * @param {object} params
+	 * @param {string} params.playerId
+	 * @param {number} params.cardId
+	 */
+	async togglePlayerCardMark({ playerId, cardId }) {
+		if (!Number.isInteger(cardId) || cardId < 0 || cardId >= TOTAL_BINGO_CARDS) {
+			throw new RangeError(`cardId inválido: ${cardId}.`);
+		}
+
+		let currentMarked = [];
+		if (this.useLocalFallback) {
+			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const existing = store.results.get(playerId);
+			if (!existing) {
+				throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+			}
+			currentMarked = Array.isArray(existing.markedCardIds) ? existing.markedCardIds : [];
+		} else {
+			const playerSnap = await getDoc(this.resultDocRef(playerId));
+			if (!playerSnap.exists()) {
+				throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+			}
+			currentMarked = Array.isArray(playerSnap.data().markedCardIds)
+				? playerSnap.data().markedCardIds
+				: [];
+		}
+
+		const markedSet = new Set(currentMarked);
+		if (markedSet.has(cardId)) {
+			markedSet.delete(cardId);
+		} else {
+			markedSet.add(cardId);
+		}
+
+		return this.updatePlayerMarkedCards({
+			playerId,
+			markedCardIds: Array.from(markedSet)
+		});
+	}
+
+	/**
+	 * Atualiza o nome de participação do jogador antes de a sessão atingir o estado `'live'`.
+	 * Caso a sessão já esteja em `'live'` ou `'finished'`, lança erro (CHECKPOINT 4f).
+	 *
+	 * @param {object} params
+	 * @param {string} params.playerId
+	 * @param {string} params.playerName
+	 * @param {'team' | 'individual'} [params.participantType]
+	 * @param {string | null} [params.teamId]
+	 * @param {object | null} [params.credentials]
+	 */
+	async updatePlayerName({
+		playerId,
+		playerName,
+		participantType,
+		teamId = null,
+		credentials = null
+	}) {
+		const cleanName = typeof playerName === 'string' ? playerName.trim() : '';
+		if (!cleanName) {
+			throw new Error('Informe um nome de participação válido.');
+		}
+
+		if (this.useLocalFallback) {
+			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const existing = store.results.get(playerId);
+			if (!existing) {
+				throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+			}
+
+			if (isParticipantNameLocked(store.session?.status)) {
+				throw new Error(
+					'O nome de participação individual/da equipe não pode ser alterado após a sessão receber o estado "live".'
+				);
+			}
+
+			const nextType = participantType ?? existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL;
+			if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+				const originality = validateParticipantNameOriginality(
+					cleanName,
+					Array.from(store.results.values()),
+					{ excludePlayerId: playerId, includeRegisteredTeams: true }
+				);
+				if (!originality.valid) {
+					throw new Error(originality.error ?? ORIGINALITY_ERROR_MESSAGE);
+				}
+			}
+
+			const nowIso = new Date().toISOString();
+			const updatedResult = {
+				...existing,
+				playerName: cleanName,
+				participantType: nextType,
+				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+				credentials: credentials ?? existing.credentials ?? null,
+				updatedAt: nowIso
+			};
+			store.results.set(playerId, updatedResult);
+
+			const existingScore = store.scores.get(playerId);
+			if (existingScore) {
+				store.scores.set(playerId, {
+					...existingScore,
+					playerName: cleanName,
+					participantType: nextType,
+					teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+					updatedAt: nowIso
+				});
+			}
+
+			persistLocalSessionStore(this.sessionId);
+			return updatedResult;
+		}
+
+		const [sessionSnap, resultsSnap] = await Promise.all([
+			getDoc(this.sessionRef),
+			getDocs(this.resultsColRef)
+		]);
+
+		const status = sessionSnap.exists() ? sessionSnap.data().status : null;
+		if (isParticipantNameLocked(status)) {
+			throw new Error(
+				'O nome de participação individual/da equipe não pode ser alterado após a sessão receber o estado "live".'
+			);
+		}
+
+		const allResults = resultsSnap.docs.map((d) => d.data());
+		const existing = allResults.find((r) => r.playerId === playerId);
+		if (!existing) {
+			throw new Error(`Participante '${playerId}' não encontrado na sessão '${this.sessionId}'.`);
+		}
+
+		const nextType = participantType ?? existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL;
+		if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+			const originality = validateParticipantNameOriginality(cleanName, allResults, {
+				excludePlayerId: playerId,
+				includeRegisteredTeams: true
+			});
+			if (!originality.valid) {
+				throw new Error(originality.error ?? ORIGINALITY_ERROR_MESSAGE);
+			}
+		}
+
+		const timestamp = serverTimestamp();
+		const batch = writeBatch(this.db);
+
+		batch.update(this.resultDocRef(playerId), {
+			playerName: cleanName,
+			participantType: nextType,
+			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+			...(credentials ? { credentials } : {}),
+			updatedAt: timestamp
+		});
+
+		batch.update(this.scoreDocRef(playerId), {
+			playerName: cleanName,
+			participantType: nextType,
+			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+			updatedAt: timestamp
+		});
+
+		await batch.commit();
+		return {
+			...existing,
+			playerName: cleanName,
+			participantType: nextType,
+			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null
+		};
+	}
+
+	/**
+	 * Constrói a visão situacional completa da cartela de um participante conectado (CHECKPOINT 4e):
+	 * - Cards escolhidos (10) e cards não selecionados (10)
+	 * - Cards marcados pelo participante (`markedCardIds`) e não marcados
+	 * - Quais cards marcados e não marcados se concretizaram (`occurringEventIds`)
+	 *
+	 * @param {string} playerId
+	 */
+	async getPlayerBoardView(playerId) {
+		const snap = await this.getSessionSnapshot();
+		const playerResult = snap.results.find((r) => r.playerId === playerId);
+		if (!playerResult) return null;
+
+		const occurringSet = new Set(snap.session?.occurringEventIds ?? []);
+		const markedSet = new Set(playerResult.markedCardIds ?? []);
+		const { selectedCardIds, unselectedCardIds } = extractBoardSelectionFromStates(
+			playerResult.cardStates ?? []
+		);
+		const selectedSet = new Set(selectedCardIds);
+
+		const cardsDetailed = snap.cards.map((card) => {
+			const isSelected = selectedSet.has(card.id);
+			const isMarked = markedSet.has(card.id);
+			const hasOccurred = occurringSet.has(card.id);
+			const cardState = Array.isArray(playerResult.cardStates)
+				? playerResult.cardStates[card.id]
+				: CARD_STATE.NOT_IN_BOARD;
+
+			let situationalCategory = 'unselected_not_occurred';
+			if (isSelected) {
+				if (isMarked && hasOccurred) situationalCategory = 'marked_and_occurred';
+				else if (isMarked && !hasOccurred) situationalCategory = 'marked_not_occurred';
+				else if (!isMarked && hasOccurred) situationalCategory = 'unmarked_and_occurred';
+				else situationalCategory = 'unmarked_not_occurred';
+			} else if (hasOccurred) {
+				situationalCategory = 'unselected_and_occurred';
+			}
+
+			return {
+				...card,
+				isSelected,
+				isMarked,
+				hasOccurred,
+				cardState,
+				situationalCategory
+			};
+		});
+
+		const chosenCards = cardsDetailed.filter((c) => c.isSelected);
+		const unselectedCards = cardsDetailed.filter((c) => !c.isSelected);
+
+		return {
+			sessionId: snap.sessionId,
+			sessionStatus: normalizeSessionStatus(snap.session?.status),
+			playerId: playerResult.playerId,
+			playerName: playerResult.playerName,
+			participantType: playerResult.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+			teamId: playerResult.teamId ?? null,
+			nameLocked: isParticipantNameLocked(snap.session?.status),
+			selectedCardIds,
+			unselectedCardIds,
+			markedCardIds: Array.from(markedSet).sort((a, b) => a - b),
+			occurringEventIds: Array.from(occurringSet).sort((a, b) => a - b),
+			chosenCards,
+			unselectedCards,
+			markedAndOccurredCardIds: chosenCards
+				.filter((c) => c.isMarked && c.hasOccurred)
+				.map((c) => c.id),
+			markedAndNotOccurredCardIds: chosenCards
+				.filter((c) => c.isMarked && !c.hasOccurred)
+				.map((c) => c.id),
+			unmarkedAndOccurredCardIds: chosenCards
+				.filter((c) => !c.isMarked && c.hasOccurred)
+				.map((c) => c.id),
+			unmarkedAndNotOccurredCardIds: chosenCards
+				.filter((c) => !c.isMarked && !c.hasOccurred)
+				.map((c) => c.id),
+			unselectedAndOccurredCardIds: unselectedCards
+				.filter((c) => c.hasOccurred)
+				.map((c) => c.id)
+		};
+	}
+
+	/**
+	 * Atualiza explicitamente o status da sessão (`'created'`, `'lobby'`, `'live'` ou `'finished'`).
+	 *
+	 * @param {'created' | 'lobby' | 'live' | 'finished'} status
 	 * @param {{ reason?: string }} [meta]
 	 */
 	async updateSessionStatus(status, meta = {}) {
-		const validStatuses = new Set(Object.values(SESSION_STATUS));
-		if (!validStatuses.has(status)) {
+		const normalizedStatus = normalizeSessionStatus(status);
+		if (!normalizedStatus) {
 			throw new RangeError(
-				`Status de sessão inválido: '${status}'. Esperado um de: ${Array.from(validStatuses).join(', ')}.`
+				`Status de sessão inválido: '${status}'. Esperado um de: created, lobby, live, finished.`
 			);
 		}
 
@@ -813,37 +1420,46 @@ export class BingoDatabase {
 			const nowIso = new Date().toISOString();
 			store.session = {
 				...store.session,
-				status,
+				status: normalizedStatus,
 				updatedAt: nowIso
 			};
 
+			if (isParticipantNameLocked(normalizedStatus)) {
+				for (const [pId, pData] of store.results.entries()) {
+					store.results.set(pId, {
+						...pData,
+						nameLocked: true
+					});
+				}
+			}
+
 			const logEntries = [];
-			if (status === SESSION_STATUS.LIVE) {
+			if (normalizedStatus === SESSION_STATUS.LIVE) {
 				logEntries.push({
 					type: LOG_OPERATION_TYPE.SESSION_STARTED,
-					message: `Sessão '${this.sessionId}' iniciada manualmente pelo administrador (status: '${previousStatus}' → '${status}').`,
-					details: { previousStatus, status, reason: meta.reason ?? 'manual_admin' }
+					message: `Sessão '${this.sessionId}' iniciada manualmente pelo administrador (status: '${previousStatus}' → '${normalizedStatus}').`,
+					details: { previousStatus, status: normalizedStatus, reason: meta.reason ?? 'manual_admin' }
 				});
-			} else if (status === SESSION_STATUS.FINISHED) {
+			} else if (normalizedStatus === SESSION_STATUS.FINISHED) {
 				logEntries.push({
 					type: LOG_OPERATION_TYPE.SESSION_FINISHED,
-					message: `Encerramento de sessão: torneio '${this.sessionId}' encerrado manualmente pelo administrador (status: '${previousStatus}' → '${status}').`,
-					details: { previousStatus, status, reason: meta.reason ?? 'manual_admin' }
+					message: `Encerramento de sessão: torneio '${this.sessionId}' encerrado manualmente pelo administrador (status: '${previousStatus}' → '${normalizedStatus}').`,
+					details: { previousStatus, status: normalizedStatus, reason: meta.reason ?? 'manual_admin' }
 				});
 			}
 
 			logEntries.push({
 				type: LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED,
-				message: `Documento 'bingo/${this.sessionId}' atualizado (status: '${previousStatus}' → '${status}').`,
+				message: `Documento 'bingo/${this.sessionId}' atualizado (status: '${previousStatus}' → '${normalizedStatus}').`,
 				details: {
 					updatedDocs: [`${BINGO_COLLECTION}/${this.sessionId}`],
 					previousStatus,
-					status
+					status: normalizedStatus
 				}
 			});
 
 			await this._recordLogs(logEntries);
-			return { sessionId: this.sessionId, status };
+			return { sessionId: this.sessionId, status: normalizedStatus };
 		}
 
 		const sessionSnap = await getDoc(this.sessionRef);
@@ -854,37 +1470,37 @@ export class BingoDatabase {
 		const previousStatus = sessionSnap.data().status;
 		const timestamp = serverTimestamp();
 		await updateDoc(this.sessionRef, {
-			status,
+			status: normalizedStatus,
 			updatedAt: timestamp
 		});
 
 		const logEntries = [];
-		if (status === SESSION_STATUS.LIVE) {
+		if (normalizedStatus === SESSION_STATUS.LIVE) {
 			logEntries.push({
 				type: LOG_OPERATION_TYPE.SESSION_STARTED,
-				message: `Sessão '${this.sessionId}' iniciada manualmente pelo administrador (status: '${previousStatus}' → '${status}').`,
-				details: { previousStatus, status, reason: meta.reason ?? 'manual_admin' }
+				message: `Sessão '${this.sessionId}' iniciada manualmente pelo administrador (status: '${previousStatus}' → '${normalizedStatus}').`,
+				details: { previousStatus, status: normalizedStatus, reason: meta.reason ?? 'manual_admin' }
 			});
-		} else if (status === SESSION_STATUS.FINISHED) {
+		} else if (normalizedStatus === SESSION_STATUS.FINISHED) {
 			logEntries.push({
 				type: LOG_OPERATION_TYPE.SESSION_FINISHED,
-				message: `Encerramento de sessão: torneio '${this.sessionId}' encerrado manualmente pelo administrador (status: '${previousStatus}' → '${status}').`,
-				details: { previousStatus, status, reason: meta.reason ?? 'manual_admin' }
+				message: `Encerramento de sessão: torneio '${this.sessionId}' encerrado manualmente pelo administrador (status: '${previousStatus}' → '${normalizedStatus}').`,
+				details: { previousStatus, status: normalizedStatus, reason: meta.reason ?? 'manual_admin' }
 			});
 		}
 
 		logEntries.push({
 			type: LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED,
-			message: `Documento 'bingo/${this.sessionId}' atualizado (status: '${previousStatus}' → '${status}').`,
+			message: `Documento 'bingo/${this.sessionId}' atualizado (status: '${previousStatus}' → '${normalizedStatus}').`,
 			details: {
 				updatedDocs: [`${BINGO_COLLECTION}/${this.sessionId}`],
 				previousStatus,
-				status
+				status: normalizedStatus
 			}
 		});
 
 		await this._recordLogs(logEntries, null, timestamp);
-		return { sessionId: this.sessionId, status };
+		return { sessionId: this.sessionId, status: normalizedStatus };
 	}
 
 	/**
@@ -912,6 +1528,13 @@ export class BingoDatabase {
 				status: nextStatus,
 				updatedAt: nowIso
 			};
+
+			for (const [pId, pData] of store.results.entries()) {
+				store.results.set(pId, {
+					...pData,
+					nameLocked: true
+				});
+			}
 
 			const logEntries = [
 				{
@@ -1094,12 +1717,15 @@ export class BingoDatabase {
 				store.results.set(playerId, {
 					...playerData,
 					cardStates: currentStates,
+					nameLocked: true,
 					updatedAt: nowIso
 				});
 
 				store.scores.set(playerId, {
 					playerId,
 					playerName,
+					participantType: playerData.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+					teamId: playerData.teamId ?? null,
 					eventsMatchedSoFar: matchedCardIds.length,
 					matchedCardIds,
 					updatedAt: nowIso
@@ -1234,6 +1860,7 @@ export class BingoDatabase {
 
 			batch.update(playerDoc.ref, {
 				cardStates: currentStates,
+				nameLocked: true,
 				updatedAt: timestamp
 			});
 
@@ -1242,6 +1869,8 @@ export class BingoDatabase {
 				{
 					playerId: playerDoc.id,
 					playerName,
+					participantType: playerData.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+					teamId: playerData.teamId ?? null,
 					eventsMatchedSoFar: matchedCardIds.length,
 					matchedCardIds,
 					updatedAt: timestamp
@@ -1366,6 +1995,12 @@ export class BingoDatabase {
 	async getSessionSnapshot() {
 		if (this.useLocalFallback) {
 			const store = getOrCreateLocalSessionStore(this.sessionId);
+			const session = store.session
+				? {
+					...store.session,
+					status: normalizeSessionStatus(store.session.status) ?? store.session.status
+				}
+				: null;
 			const cards =
 				store.carding.size > 0
 					? Array.from(store.carding.values()).sort((a, b) => a.id - b.id)
@@ -1384,10 +2019,11 @@ export class BingoDatabase {
 			);
 
 			return {
-				initialized: Boolean(store.session),
+				initialized: Boolean(session),
 				sessionId: this.sessionId,
 				persistenceMode: 'local',
-				session: store.session,
+				session,
+				registeredTeams: REGISTERED_TOURNAMENT_TEAMS.map((t) => ({ ...t })),
 				cards,
 				results,
 				leaderboard,
@@ -1405,7 +2041,13 @@ export class BingoDatabase {
 			getDocs(this.logsColRef)
 		]);
 
-		const session = sessionSnap.exists() ? sessionSnap.data() : null;
+		const rawSession = sessionSnap.exists() ? sessionSnap.data() : null;
+		const session = rawSession
+			? {
+				...rawSession,
+				status: normalizeSessionStatus(rawSession.status) ?? rawSession.status
+			}
+			: null;
 		const cards =
 			cardsSnap.docs.length > 0
 				? cardsSnap.docs.map((d) => d.data()).sort((a, b) => a.id - b.id)
@@ -1427,6 +2069,7 @@ export class BingoDatabase {
 			sessionId: this.sessionId,
 			persistenceMode: 'firestore',
 			session,
+			registeredTeams: REGISTERED_TOURNAMENT_TEAMS.map((t) => ({ ...t })),
 			cards,
 			results,
 			leaderboard,
@@ -1434,6 +2077,104 @@ export class BingoDatabase {
 			completedPlayers,
 			logs
 		};
+	}
+
+	/**
+	 * Lista todas as sessões conhecidas e retorna seus resultados e pontuações
+	 * (CHECKPOINT 4e: visualização dos resultados e pontuação das sessões anteriores de todas as equipes/usuários).
+	 *
+	 * @param {object} [options]
+	 * @param {string | null} [options.excludeSessionId=null] Opcionalmente exclui uma sessão específica
+	 * @param {boolean} [options.onlyFinished=false] Se verdadeiro, filtra apenas sessões com status `'finished'`
+	 */
+	async getPreviousSessionsHistory({ excludeSessionId = null, onlyFinished = false } = {}) {
+		if (this.useLocalFallback) {
+			const sessionIds = listKnownLocalSessionIds();
+			const history = [];
+
+			for (const id of sessionIds) {
+				if (excludeSessionId && id === excludeSessionId) continue;
+				const store = getOrCreateLocalSessionStore(id);
+				if (!store.session) continue;
+
+				const normalizedStatus =
+					normalizeSessionStatus(store.session.status) ?? store.session.status;
+				if (onlyFinished && normalizedStatus !== SESSION_STATUS.FINISHED) continue;
+
+				const leaderboard = Array.from(store.scores.values()).sort(
+					(a, b) => b.eventsMatchedSoFar - a.eventsMatchedSoFar
+				);
+				const results = Array.from(store.results.values()).map((r) => {
+					const { credentials, ...publicResult } = r;
+					return publicResult;
+				});
+				const maxScore = leaderboard.length > 0 ? leaderboard[0].eventsMatchedSoFar : 0;
+				const winners =
+					maxScore > 0
+						? leaderboard.filter((entry) => entry.eventsMatchedSoFar === maxScore)
+						: [];
+
+				history.push({
+					sessionId: id,
+					status: normalizedStatus,
+					thresholdDistanceMeters: store.session.thresholdDistanceMeters ?? 1550,
+					occurringEventIds: store.session.occurringEventIds ?? [],
+					createdAt: store.session.createdAt ?? null,
+					updatedAt: store.session.updatedAt ?? null,
+					leaderboard,
+					results,
+					winners
+				});
+			}
+
+			return history.sort((a, b) =>
+				String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? ''))
+			);
+		}
+
+		const bingoCol = collection(this.db, BINGO_COLLECTION);
+		const sessionsSnap = await getDocs(bingoCol);
+		const history = [];
+
+		for (const sessionDoc of sessionsSnap.docs) {
+			const id = sessionDoc.id;
+			if (excludeSessionId && id === excludeSessionId) continue;
+			const sData = sessionDoc.data();
+			const normalizedStatus = normalizeSessionStatus(sData.status) ?? sData.status;
+			if (onlyFinished && normalizedStatus !== SESSION_STATUS.FINISHED) continue;
+
+			const [scoresSnap, resultsSnap] = await Promise.all([
+				getDocs(collection(this.db, BINGO_COLLECTION, id, SUBCOLLECTIONS.SCORES)),
+				getDocs(collection(this.db, BINGO_COLLECTION, id, SUBCOLLECTIONS.RESULTS))
+			]);
+
+			const leaderboard = scoresSnap.docs
+				.map((d) => d.data())
+				.sort((a, b) => b.eventsMatchedSoFar - a.eventsMatchedSoFar);
+			const results = resultsSnap.docs.map((d) => {
+				const { credentials, ...publicResult } = d.data();
+				return publicResult;
+			});
+			const maxScore = leaderboard.length > 0 ? leaderboard[0].eventsMatchedSoFar : 0;
+			const winners =
+				maxScore > 0
+					? leaderboard.filter((entry) => entry.eventsMatchedSoFar === maxScore)
+					: [];
+
+			history.push({
+				sessionId: id,
+				status: normalizedStatus,
+				thresholdDistanceMeters: sData.thresholdDistanceMeters ?? 1550,
+				occurringEventIds: sData.occurringEventIds ?? [],
+				createdAt: sData.createdAt ?? null,
+				updatedAt: sData.updatedAt ?? null,
+				leaderboard,
+				results,
+				winners
+			});
+		}
+
+		return history;
 	}
 
 	/**
@@ -1499,6 +2240,7 @@ export class BingoDatabase {
 				sessionId: this.sessionId,
 				persistenceMode: 'firestore',
 				session,
+				registeredTeams: REGISTERED_TOURNAMENT_TEAMS.map((t) => ({ ...t })),
 				cards,
 				results,
 				leaderboard,
@@ -1516,7 +2258,10 @@ export class BingoDatabase {
 			this.sessionRef,
 			(snap) => {
 				initialized = snap.exists();
-				session = snap.exists() ? snap.data() : null;
+				const raw = snap.exists() ? snap.data() : null;
+				session = raw
+					? { ...raw, status: normalizeSessionStatus(raw.status) ?? raw.status }
+					: null;
 				emitCombined();
 			},
 			handleSnapshotError

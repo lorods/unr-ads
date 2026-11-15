@@ -1,5 +1,5 @@
 <script>
-	import { onMount, tick } from 'svelte';
+	import {onMount, tick} from 'svelte';
 	import {
 		BINGO_CARDS_SEED,
 		PLAYER_BOARD_SIZE,
@@ -15,7 +15,7 @@
 		SESSION_STATUS,
 		createBingoDatabase
 	} from '$lib/db/bingoDatabase.js';
-	import { isFirebaseConfigured } from '$lib/firebase/client.js';
+	import {isFirebaseConfigured} from '$lib/firebase/client.js';
 
 	let sessionId = $state(DEFAULT_SESSION_ID);
 	let thresholdDistanceMeters = $state(1550);
@@ -26,7 +26,7 @@
 		sessionId: DEFAULT_SESSION_ID,
 		persistenceMode: !isFirebaseConfigured ? 'local' : 'firestore',
 		session: null,
-		cards: BINGO_CARDS_SEED.map((c) => ({ ...c, cardexcludes: [...c.cardexcludes] })),
+		cards: BINGO_CARDS_SEED.map((c) => ({...c, cardexcludes: [...c.cardexcludes]})),
 		results: [],
 		leaderboard: [],
 		winners: [],
@@ -54,15 +54,15 @@
 	let unsubscribeSnapshot = null;
 
 	const LOG_CATEGORIES = [
-		{ type: 'all', label: 'Todas as operações' },
-		{ type: LOG_OPERATION_TYPE.DB_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.DB_INITIALIZED] },
-		{ type: LOG_OPERATION_TYPE.CARDS_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.CARDS_INITIALIZED] },
-		{ type: LOG_OPERATION_TYPE.PLAYER_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.PLAYER_INITIALIZED] },
-		{ type: LOG_OPERATION_TYPE.SESSION_STARTED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SESSION_STARTED] },
-		{ type: LOG_OPERATION_TYPE.EVENT_OCCURRED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.EVENT_OCCURRED] },
-		{ type: LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED] },
-		{ type: LOG_OPERATION_TYPE.BOARD_COMPLETED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.BOARD_COMPLETED] },
-		{ type: LOG_OPERATION_TYPE.SESSION_FINISHED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SESSION_FINISHED] }
+		{type: 'all', label: 'Todas as operações'},
+		{type: LOG_OPERATION_TYPE.DB_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.DB_INITIALIZED]},
+		{type: LOG_OPERATION_TYPE.CARDS_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.CARDS_INITIALIZED]},
+		{type: LOG_OPERATION_TYPE.PLAYER_INITIALIZED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.PLAYER_INITIALIZED]},
+		{type: LOG_OPERATION_TYPE.SESSION_STARTED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SESSION_STARTED]},
+		{type: LOG_OPERATION_TYPE.EVENT_OCCURRED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.EVENT_OCCURRED]},
+		{type: LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SUBCOLLECTIONS_UPDATED]},
+		{type: LOG_OPERATION_TYPE.BOARD_COMPLETED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.BOARD_COMPLETED]},
+		{type: LOG_OPERATION_TYPE.SESSION_FINISHED, label: LOG_OPERATION_LABELS[LOG_OPERATION_TYPE.SESSION_FINISHED]}
 	];
 
 	function showFeedback(message, type = 'info') {
@@ -294,9 +294,9 @@
 			}
 
 			const demoRoster = [
-				{ playerId: 'alfa_racing', playerName: 'Alfa Mousetrap Racing' },
-				{ playerId: 'torque_rato', playerName: 'Torque de Ratoeira' },
-				{ playerId: 'vetor_delta', playerName: 'Vetor Delta Engenharia' }
+				{playerId: 'alfa_racing', playerName: 'Alfa Mousetrap Racing'},
+				{playerId: 'torque_rato', playerName: 'Torque de Ratoeira'},
+				{playerId: 'vetor_delta', playerName: 'Vetor Delta Engenharia'}
 			];
 
 			for (const demo of demoRoster) {
@@ -339,7 +339,7 @@
 	function exportLogsAsJson() {
 		if (typeof window === 'undefined') return;
 		const payload = JSON.stringify(snapshot.logs, null, 2);
-		const blob = new Blob([payload], { type: 'application/json' });
+		const blob = new Blob([payload], {type: 'application/json'});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -383,7 +383,7 @@
 	});
 
 	let logCountsByType = $derived.by(() => {
-		const counts = { all: snapshot.logs.length };
+		const counts = {all: snapshot.logs.length};
 		for (const cat of LOG_CATEGORIES) {
 			if (cat.type !== 'all') counts[cat.type] = 0;
 		}
@@ -432,48 +432,48 @@
 			<div class="persistence-pill {snapshot.persistenceMode === 'firestore' ? 'firestore' : 'local'}">
 				<span class="dot"></span>
 				{#if snapshot.persistenceMode === 'firestore'}
-					Firestore Conectado
+				Firestore Conectado
 				{:else}
-					Modo Local (Fallback / localStorage)
+				Modo Local (Fallback / localStorage)
 				{/if}
 			</div>
 
-			<div
-				class="session-status-badge status-{snapshot.initialized
+			<div class="session-status-badge status-{snapshot.initialized
 					? snapshot.session?.status ?? 'lobby'
-					: 'uninitialized'}"
-			>
+					: 'uninitialized'}">
 				{#if !snapshot.initialized}
-					SESSÃO NÃO INICIALIZADA
+				SESSÃO NÃO INICIALIZADA
 				{:else if snapshot.session?.status === SESSION_STATUS.LIVE}
-					● TORNEIO EM ANDAMENTO (LIVE)
+				● TORNEIO EM ANDAMENTO (LIVE)
 				{:else if snapshot.session?.status === SESSION_STATUS.FINISHED}
-					■ TORNEIO ENCERRADO (FINISHED)
+				■ TORNEIO ENCERRADO (FINISHED)
+				{:else if snapshot.session?.status === SESSION_STATUS.CREATED}
+				◌ SESSÃO CRIADA (AGUARDANDO LOBBY)
 				{:else}
-					◐ AGUARDANDO NO LOBBY
+				◐ AGUARDANDO NO LOBBY (LOBBY)
 				{/if}
 			</div>
 		</div>
 	</header>
 
 	{#if feedbackMessage}
-		<div class="alert alert-{feedbackType}" role="status">
-			<span>{feedbackMessage}</span>
-			<button type="button" class="alert-close" onclick={() => (feedbackMessage = '')}>✕</button>
-		</div>
+	<div class="alert alert-{feedbackType}" role="status">
+		<span>{feedbackMessage}</span>
+		<button type="button" class="alert-close" onclick={()=> (feedbackMessage = '')}>✕</button>
+	</div>
 	{/if}
 
 	{#if snapshot.completedPlayers.length > 0}
-		<div class="bingo-banner">
-			<div class="bingo-icon">🏆</div>
-			<div>
-				<strong>FECHAMENTO DE CARTELA REGISTRADO ({PLAYER_BOARD_SIZE}/{PLAYER_BOARD_SIZE} ITENS)!</strong>
-				<p>
-					Vencedor(es) com cartela fechada:
-					{snapshot.completedPlayers.map((p) => `${p.playerName} (${p.playerId})`).join(', ')}
-				</p>
-			</div>
+	<div class="bingo-banner">
+		<div class="bingo-icon">🏆</div>
+		<div>
+			<strong>FECHAMENTO DE CARTELA REGISTRADO ({PLAYER_BOARD_SIZE}/{PLAYER_BOARD_SIZE} ITENS)!</strong>
+			<p>
+				Vencedor(es) com cartela fechada:
+				{snapshot.completedPlayers.map((p) => `${p.playerName} (${p.playerId})`).join(', ')}
+			</p>
 		</div>
+	</div>
 	{/if}
 
 	<!-- SEÇÃO 1: CONTROLES MANUAIS DO TORNEIO (REQUISITO FUNCIONAL A) -->
@@ -490,73 +490,46 @@
 			<div class="session-config-inline">
 				<label>
 					<span>Sessão (<code>sessionId</code>)</span>
-					<input
-						type="text"
-						bind:value={sessionId}
-						onchange={connectDatabase}
-						placeholder="default"
-					/>
+					<input type="text" bind:value={sessionId} onchange={connectDatabase} placeholder="default" />
 				</label>
 				<label>
 					<span>Limiar distância (m)</span>
 					<input type="number" bind:value={thresholdDistanceMeters} min="1" step="10" />
 				</label>
 				{#if isFirebaseConfigured}
-					<label class="checkbox-inline">
-						<input type="checkbox" bind:checked={forceLocalMode} onchange={connectDatabase} />
-						<span>Forçar modo local</span>
-					</label>
+				<label class="checkbox-inline">
+					<input type="checkbox" bind:checked={forceLocalMode} onchange={connectDatabase} />
+					<span>Forçar modo local</span>
+				</label>
 				{/if}
 			</div>
 		</div>
 
 		<div class="manual-actions-grid">
-			<button
-				type="button"
-				class="btn btn-secondary"
-				disabled={busyAction !== ''}
-				onclick={() => handleInitDb(false)}
-			>
+			<button type="button" class="btn btn-secondary" disabled={busyAction !=='' } onclick={()=>
+				handleInitDb(false)}
+				>
 				🗄️ Inicializar DB & Catálogo
 			</button>
 
-			<button
-				type="button"
-				class="btn btn-start"
-				disabled={busyAction !== '' || snapshot.session?.status === SESSION_STATUS.LIVE}
-				onclick={handleStartSession}
-			>
+			<button type="button" class="btn btn-start" disabled={busyAction !=='' ||
+				snapshot.session?.status===SESSION_STATUS.LIVE} onclick={handleStartSession}>
 				▶ Iniciar Torneio Manualmente (LIVE)
 			</button>
 
-			<button
-				type="button"
-				class="btn btn-finish"
-				disabled={busyAction !== '' ||
-					!snapshot.initialized ||
-					snapshot.session?.status === SESSION_STATUS.FINISHED}
-				onclick={handleFinishSession}
-			>
+			<button type="button" class="btn btn-finish" disabled={busyAction !=='' || !snapshot.initialized ||
+				snapshot.session?.status===SESSION_STATUS.FINISHED} onclick={handleFinishSession}>
 				⏹ Encerrar Torneio Manualmente (FINISHED)
 			</button>
 
-			<button
-				type="button"
-				class="btn btn-outline"
-				disabled={busyAction !== '' ||
-					!snapshot.initialized ||
-					snapshot.session?.status === SESSION_STATUS.LOBBY}
-				onclick={handleReturnToLobby}
-			>
+			<button type="button" class="btn btn-outline" disabled={busyAction !=='' || !snapshot.initialized ||
+				snapshot.session?.status===SESSION_STATUS.LOBBY} onclick={handleReturnToLobby}>
 				↺ Retornar ao Lobby
 			</button>
 
-			<button
-				type="button"
-				class="btn btn-danger-outline"
-				disabled={busyAction !== ''}
-				onclick={() => handleInitDb(true)}
-			>
+			<button type="button" class="btn btn-danger-outline" disabled={busyAction !=='' } onclick={()=>
+				handleInitDb(true)}
+				>
 				♻️ Reinicializar DB (Sobrescrever)
 			</button>
 		</div>
@@ -611,12 +584,8 @@
 					<input type="checkbox" bind:checked={autoScrollLog} />
 					<span>Auto-scroll</span>
 				</label>
-				<button
-					type="button"
-					class="btn btn-sm btn-outline"
-					disabled={snapshot.logs.length === 0}
-					onclick={exportLogsAsJson}
-				>
+				<button type="button" class="btn btn-sm btn-outline" disabled={snapshot.logs.length===0}
+					onclick={exportLogsAsJson}>
 					⬇ Exportar JSON ({snapshot.logs.length})
 				</button>
 			</div>
@@ -625,60 +594,55 @@
 		<div class="log-filters">
 			<div class="category-chips" role="tablist" aria-label="Filtrar logs por categoria de operação">
 				{#each LOG_CATEGORIES as cat}
-					<button
-						type="button"
-						class="chip {selectedLogType === cat.type ? 'active' : ''} chip-{cat.type}"
-						onclick={() => (selectedLogType = cat.type)}
+				<button type="button" class="chip {selectedLogType === cat.type ? 'active' : ''} chip-{cat.type}"
+					onclick={()=> (selectedLogType = cat.type)}
 					>
-						<span>{cat.label}</span>
-						<span class="chip-count">{logCountsByType[cat.type] ?? 0}</span>
-					</button>
+					<span>{cat.label}</span>
+					<span class="chip-count">{logCountsByType[cat.type] ?? 0}</span>
+				</button>
 				{/each}
 			</div>
 
 			<div class="log-search">
-				<input
-					type="search"
-					bind:value={logSearchQuery}
-					placeholder="Filtrar logs por texto, ID de carta, jogador ou documento..."
-				/>
+				<input type="search" bind:value={logSearchQuery}
+					placeholder="Filtrar logs por texto, ID de carta, jogador ou documento..." />
 			</div>
 		</div>
 
 		<div class="log-stream" bind:this={logContainerEl} aria-live="polite">
 			{#if filteredLogs.length === 0}
-				<div class="empty-log-state">
-					<p>Nenhuma operação registrada para o filtro selecionado.</p>
-					<small>
-						Clique em <strong>"Inicializar DB & Catálogo"</strong> ou
-						<strong>"Iniciar Torneio Manualmente"</strong> acima para registrar as primeiras operações
-						com timestamp.
-					</small>
-				</div>
+			<div class="empty-log-state">
+				<p>Nenhuma operação registrada para o filtro selecionado.</p>
+				<small>
+					Clique em <strong>"Inicializar DB & Catálogo"</strong> ou
+					<strong>"Iniciar Torneio Manualmente"</strong> acima para registrar as primeiras operações
+					com timestamp.
+				</small>
+			</div>
 			{:else}
-				{#each filteredLogs as entry (entry.id)}
-					<article class="log-entry log-type-{entry.type}">
-						<div class="log-meta">
-							<span class="log-seq">#{String(entry.seq ?? 0).padStart(3, '0')}</span>
-							<time class="log-timestamp" datetime={entry.timestampIso} title={entry.timestampIso}>
-								🕒 {formatTimestamp(entry)}
-							</time>
-							<span class="log-badge badge-{entry.type}">
-								{entry.label ?? LOG_OPERATION_LABELS[entry.type] ?? entry.type}
-							</span>
-						</div>
+			{#each filteredLogs as entry (entry.id)}
+			<article class="log-entry log-type-{entry.type}">
+				<div class="log-meta">
+					<span class="log-seq">#{String(entry.seq ?? 0).padStart(3, '0')}</span>
+					<time class="log-timestamp" datetime={entry.timestampIso} title={entry.timestampIso}>
+						🕒 {formatTimestamp(entry)}
+					</time>
+					<span class="log-badge badge-{entry.type}">
+						{entry.label ?? LOG_OPERATION_LABELS[entry.type] ?? entry.type}
+					</span>
+				</div>
 
-						<div class="log-body">
-							<p class="log-message">{entry.message}</p>
-							{#if entry.details && Object.keys(entry.details).length > 0}
-								<details class="log-details">
-									<summary>Inspecionar metadados / documentos atualizados</summary>
-									<pre>{JSON.stringify(entry.details, null, 2)}</pre>
-								</details>
-							{/if}
-						</div>
-					</article>
-				{/each}
+				<div class="log-body">
+					<p class="log-message">{entry.message}</p>
+					{#if entry.details && Object.keys(entry.details).length > 0}
+					<details class="log-details">
+						<summary>Inspecionar metadados / documentos atualizados</summary>
+						<pre>{JSON.stringify(entry.details, null, 2)}</pre>
+					</details>
+					{/if}
+				</div>
+			</article>
+			{/each}
 			{/if}
 		</div>
 	</section>
@@ -701,57 +665,52 @@
 
 			<div class="cards-catalog-list">
 				{#each snapshot.cards as card (card.id)}
-					{@const isOccurred = occurringSet.has(card.id)}
-					{@const isExcludedByOccurred = excludedByOccurringSet.has(card.id)}
-					{@const playersCount = cardPlayerCountMap.get(card.id) ?? 0}
-					<div
-						class="catalog-card-item {isOccurred ? 'occurred' : ''} {isExcludedByOccurred && !isOccurred
+				{@const isOccurred = occurringSet.has(card.id)}
+				{@const isExcludedByOccurred = excludedByOccurringSet.has(card.id)}
+				{@const playersCount = cardPlayerCountMap.get(card.id) ?? 0}
+				<div class="catalog-card-item {isOccurred ? 'occurred' : ''} {isExcludedByOccurred && !isOccurred
 							? 'excluded-warning'
-							: ''}"
-					>
-						<div class="catalog-card-top">
-							<div class="catalog-card-id-group">
-								<span class="card-id-pill">#{card.id}</span>
-								<code class="card-alias">{card.alias}</code>
-								{#if card.cardexcludes?.length > 0}
-									<span class="excludes-tag" title="Mutuamente exclusiva com a(s) carta(s) indicada(s)">
-										Exclui: #{card.cardexcludes.join(', #')}
-									</span>
-								{/if}
-							</div>
-
-							<span class="players-holding-pill" title="Jogadores com este evento na cartela">
-								👥 {playersCount} cartela(s)
+							: ''}">
+					<div class="catalog-card-top">
+						<div class="catalog-card-id-group">
+							<span class="card-id-pill">#{card.id}</span>
+							<code class="card-alias">{card.alias}</code>
+							{#if card.cardexcludes?.length > 0}
+							<span class="excludes-tag" title="Mutuamente exclusiva com a(s) carta(s) indicada(s)">
+								Exclui: #{card.cardexcludes.join(', #')}
 							</span>
-						</div>
-
-						<p class="catalog-card-text">{card.guireptext}</p>
-
-						<div class="catalog-card-footer">
-							{#if isOccurred}
-								<span class="occurred-status">✓ Ocorrência já registrada na sessão</span>
-							{:else if isExcludedByOccurred}
-								<span class="conflict-warning-text">
-									⚠️ Conflita com evento mutuamente exclusivo já ocorrido
-								</span>
-							{:else}
-								<span class="pending-status">Aguardando ocorrência</span>
 							{/if}
-
-							<button
-								type="button"
-								class="btn btn-sm {isOccurred ? 'btn-outline' : 'btn-primary'}"
-								disabled={busyAction !== ''}
-								onclick={() => handleRecordEvent(card.id)}
-							>
-								{#if isOccurred}
-									Re-sincronizar Ocorrência #{card.id}
-								{:else}
-									⚡ Registrar Ocorrência #{card.id}
-								{/if}
-							</button>
 						</div>
+
+						<span class="players-holding-pill" title="Jogadores com este evento na cartela">
+							👥 {playersCount} cartela(s)
+						</span>
 					</div>
+
+					<p class="catalog-card-text">{card.guireptext}</p>
+
+					<div class="catalog-card-footer">
+						{#if isOccurred}
+						<span class="occurred-status">✓ Ocorrência já registrada na sessão</span>
+						{:else if isExcludedByOccurred}
+						<span class="conflict-warning-text">
+							⚠️ Conflita com evento mutuamente exclusivo já ocorrido
+						</span>
+						{:else}
+						<span class="pending-status">Aguardando ocorrência</span>
+						{/if}
+
+						<button type="button" class="btn btn-sm {isOccurred ? 'btn-outline' : 'btn-primary'}"
+							disabled={busyAction !=='' } onclick={()=> handleRecordEvent(card.id)}
+							>
+							{#if isOccurred}
+							Re-sincronizar Ocorrência #{card.id}
+							{:else}
+							⚡ Registrar Ocorrência #{card.id}
+							{/if}
+						</button>
+					</div>
+				</div>
 				{/each}
 			</div>
 		</section>
@@ -770,80 +729,71 @@
 						</p>
 					</div>
 
-					<button
-						type="button"
-						class="btn btn-sm btn-secondary"
-						disabled={busyAction !== ''}
-						onclick={handleSeedDemoPlayers}
-					>
+					<button type="button" class="btn btn-sm btn-secondary" disabled={busyAction !=='' }
+						onclick={handleSeedDemoPlayers}>
 						+ Gerar 3 Equipes de Teste
 					</button>
 				</div>
 
 				{#if snapshot.leaderboard.length === 0}
-					<div class="empty-box">
-						<p>Nenhum jogador inicializado nesta sessão ainda.</p>
-						<small>
-							Use o botão <strong>"+ Gerar 3 Equipes de Teste"</strong> ou o formulário abaixo para
-							inicializar jogadores e cartelas.
-						</small>
-					</div>
+				<div class="empty-box">
+					<p>Nenhum jogador inicializado nesta sessão ainda.</p>
+					<small>
+						Use o botão <strong>"+ Gerar 3 Equipes de Teste"</strong> ou o formulário abaixo para
+						inicializar jogadores e cartelas.
+					</small>
+				</div>
 				{:else}
-					<div class="leaderboard-list">
-						{#each snapshot.leaderboard as entry, idx (entry.playerId)}
-							{@const playerResult = resultByPlayerId.get(entry.playerId)}
-							{@const isWinner = entry.eventsMatchedSoFar >= PLAYER_BOARD_SIZE}
-							<div class="player-score-card {isWinner ? 'player-bingo' : ''}">
-								<div class="player-score-header">
-									<div class="player-rank-info">
-										<span class="rank-badge">#{idx + 1}</span>
-										<div>
-											<strong>{entry.playerName}</strong>
-											<code class="player-id-code">{entry.playerId}</code>
-										</div>
-									</div>
-
-									<div class="score-counter-group">
-										{#if isWinner}
-											<span class="bingo-pill">🏆 BINGO FECHADO!</span>
-										{/if}
-										<span class="score-fraction">
-											{entry.eventsMatchedSoFar} / {PLAYER_BOARD_SIZE}
-										</span>
-									</div>
+				<div class="leaderboard-list">
+					{#each snapshot.leaderboard as entry, idx (entry.playerId)}
+					{@const playerResult = resultByPlayerId.get(entry.playerId)}
+					{@const isWinner = entry.eventsMatchedSoFar >= PLAYER_BOARD_SIZE}
+					<div class="player-score-card {isWinner ? 'player-bingo' : ''}">
+						<div class="player-score-header">
+							<div class="player-rank-info">
+								<span class="rank-badge">#{idx + 1}</span>
+								<div>
+									<strong>{entry.playerName}</strong>
+									<code class="player-id-code">{entry.playerId}</code>
 								</div>
+							</div>
 
-								<div class="progress-bar-track">
-									<div
-										class="progress-bar-fill {isWinner ? 'fill-bingo' : ''}"
-										style="width: {Math.min(
+							<div class="score-counter-group">
+								{#if isWinner}
+								<span class="bingo-pill">🏆 BINGO FECHADO!</span>
+								{/if}
+								<span class="score-fraction">
+									{entry.eventsMatchedSoFar} / {PLAYER_BOARD_SIZE}
+								</span>
+							</div>
+						</div>
+
+						<div class="progress-bar-track">
+							<div class="progress-bar-fill {isWinner ? 'fill-bingo' : ''}" style="width: {Math.min(
 											100,
 											Math.round((entry.eventsMatchedSoFar / PLAYER_BOARD_SIZE) * 100)
-										)}%"
-									></div>
-								</div>
+										)}%"></div>
+						</div>
 
-								{#if playerResult && Array.isArray(playerResult.cardStates)}
-									<div class="board-states-strip" title="Estado das 20 cartas em results/{entry.playerId}.cardStates">
-										{#each playerResult.cardStates as state, cardId}
-											{#if state !== CARD_STATE.NOT_IN_BOARD}
-												<span
-													class="board-chip {state === CARD_STATE.MATCHED
+						{#if playerResult && Array.isArray(playerResult.cardStates)}
+						<div class="board-states-strip"
+							title="Estado das 20 cartas em results/{entry.playerId}.cardStates">
+							{#each playerResult.cardStates as state, cardId}
+							{#if state !== CARD_STATE.NOT_IN_BOARD}
+							<span class="board-chip {state === CARD_STATE.MATCHED
 														? 'chip-matched'
-														: 'chip-unmarked'}"
-													title="Carta #{cardId}: {state === CARD_STATE.MATCHED
+														: 'chip-unmarked'}" title="Carta #{cardId}: {state === CARD_STATE.MATCHED
 														? 'Ocorrida/Marcada (1)'
-														: 'Na cartela, aguardando (0)'}"
-												>
-													#{cardId} {state === CARD_STATE.MATCHED ? '✓' : ''}
-												</span>
-											{/if}
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{/each}
+														: 'Na cartela, aguardando (0)'}">
+								#{cardId} {state === CARD_STATE.MATCHED ? '✓' : ''}
+							</span>
+							{/if}
+							{/each}
+						</div>
+						{/if}
 					</div>
+					{/each}
+				</div>
 				{/if}
 			</section>
 
@@ -866,12 +816,8 @@
 						</label>
 						<label>
 							<span>Nome da Equipe / Jogador</span>
-							<input
-								type="text"
-								bind:value={newPlayerName}
-								required
-								placeholder="Equipe Ratoeira Turbo"
-							/>
+							<input type="text" bind:value={newPlayerName} required
+								placeholder="Equipe Ratoeira Turbo" />
 						</label>
 					</div>
 
@@ -886,34 +832,27 @@
 					</div>
 
 					{#if !playerSelectionValidation.valid}
-						<div class="validation-error">
-							Conflito de exclusão mútua (<code>cardexcludes</code>) entre as cartas:
-							{playerSelectionValidation.conflicts.map(([a, b]) => `#${a} vs #${b}`).join(', ')}
-						</div>
+					<div class="validation-error">
+						Conflito de exclusão mútua (<code>cardexcludes</code>) entre as cartas:
+						{playerSelectionValidation.conflicts.map(([a, b]) => `#${a} vs #${b}`).join(', ')}
+					</div>
 					{/if}
 
 					<div class="mini-cards-grid">
 						{#each snapshot.cards as card (card.id)}
-							{@const isSelected = selectedCardIdsForPlayer.includes(card.id)}
-							<button
-								type="button"
-								class="mini-card-btn {isSelected ? 'selected' : ''}"
-								onclick={() => toggleCardForPlayer(card.id)}
-								title={card.guireptext}
+						{@const isSelected = selectedCardIdsForPlayer.includes(card.id)}
+						<button type="button" class="mini-card-btn {isSelected ? 'selected' : ''}" onclick={()=>
+							toggleCardForPlayer(card.id)}
+							title={card.guireptext}
 							>
-								<span class="mini-id">#{card.id}</span>
-								<span class="mini-alias">{card.alias}</span>
-							</button>
+							<span class="mini-id">#{card.id}</span>
+							<span class="mini-alias">{card.alias}</span>
+						</button>
 						{/each}
 					</div>
 
-					<button
-						type="submit"
-						class="btn btn-primary btn-full"
-						disabled={busyAction !== '' ||
-							selectedCardIdsForPlayer.length !== PLAYER_BOARD_SIZE ||
-							!playerSelectionValidation.valid}
-					>
+					<button type="submit" class="btn btn-primary btn-full" disabled={busyAction !=='' ||
+						selectedCardIdsForPlayer.length !==PLAYER_BOARD_SIZE || !playerSelectionValidation.valid}>
 						➕ Inicializar Jogador e Cartela no Banco
 					</button>
 				</form>
@@ -1031,7 +970,8 @@
 		letter-spacing: 0.03em;
 	}
 
-	.status-uninitialized {
+	.status-uninitialized,
+	.status-created {
 		background: #334155;
 		color: #cbd5e1;
 	}
@@ -1380,25 +1320,32 @@
 	.log-type-session_started {
 		border-left-color: #22c55e;
 	}
+
 	.log-type-db_initialized {
 		border-left-color: #38bdf8;
 	}
+
 	.log-type-player_initialized {
 		border-left-color: #a855f7;
 	}
+
 	.log-type-cards_initialized {
 		border-left-color: #818cf8;
 	}
+
 	.log-type-event_occurred {
 		border-left-color: #f59e0b;
 	}
+
 	.log-type-subcollections_updated {
 		border-left-color: #64748b;
 	}
+
 	.log-type-board_completed {
 		border-left-color: #eab308;
 		background: rgba(234, 179, 8, 0.1);
 	}
+
 	.log-type-session_finished {
 		border-left-color: #ef4444;
 	}
@@ -1438,30 +1385,37 @@
 		background: rgba(34, 197, 94, 0.2);
 		color: #4ade80;
 	}
+
 	.badge-db_initialized {
 		background: rgba(56, 189, 248, 0.2);
 		color: #38bdf8;
 	}
+
 	.badge-player_initialized {
 		background: rgba(168, 85, 247, 0.2);
 		color: #c084fc;
 	}
+
 	.badge-cards_initialized {
 		background: rgba(129, 140, 248, 0.2);
 		color: #a5b4fc;
 	}
+
 	.badge-event_occurred {
 		background: rgba(245, 158, 11, 0.2);
 		color: #fbbf24;
 	}
+
 	.badge-subcollections_updated {
 		background: rgba(148, 163, 184, 0.2);
 		color: #cbd5e1;
 	}
+
 	.badge-board_completed {
 		background: rgba(234, 179, 8, 0.3);
 		color: #fde047;
 	}
+
 	.badge-session_finished {
 		background: rgba(239, 68, 68, 0.25);
 		color: #fca5a5;
