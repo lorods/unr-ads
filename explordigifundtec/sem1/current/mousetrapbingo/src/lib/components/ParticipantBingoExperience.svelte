@@ -2163,39 +2163,48 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		gap: 0.75rem;
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 0.65rem;
+	}
+
+	.panel-header h2 {
+		margin: 0;
+		font-size: 1.08rem;
+	}
+
+	.panel-desc {
+		margin: 0.25rem 0 0;
+		font-size: 0.84rem;
+		color: #94a3b8;
+	}
+
+	.board-builder-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.situational-metrics-grid {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		align-items: stretch;
+		gap: 0.5rem;
+		width: 100%;
+		overflow-x: auto;
 	}
 
 	.sit-metric {
+		flex: 1 1 0%;
+		min-width: 0;
 		background: #0f172a;
 		border: 1px solid #334155;
 		border-radius: 8px;
-		padding: 0.6rem 0.8rem;
+		padding: 0.5rem 0.65rem;
 		display: flex;
 		flex-direction: column;
+		justify-content: space-between;
 	}
 
 	.sit-metric.marked-hit {
-		border-color: #22c55e;
-		background: rgba(34, 197, 94, 0.1);
-	}
-
-	.sit-metric.unmarked-hit {
-		border-color: #f59e0b;
-		background: rgba(245, 158, 11, 0.1);
-	}
-
-	.sit-label {
-		font-size: 0.72rem;
-		color: #94a3b8;
-		text-transform: uppercase;
-	}
-
-	.sit-metric strong {
-		font-size: 1.05rem;
-		margin-top: 0.15rem;
 		border-color: #22c55e;
 		background: rgba(34, 197, 94, 0.1);
 	}
