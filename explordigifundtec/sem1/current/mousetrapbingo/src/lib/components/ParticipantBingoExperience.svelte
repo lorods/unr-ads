@@ -768,6 +768,9 @@
 			<div class="brand-badge">🏎️ BINGO SPA</div>
 			<div>
 				<h1>Mousetrap Racing Bingo — Central do Participante</h1>
+				<a href="/admin" class="btn btn-sm btn-outline" style="text-decoration: none;">
+				⚙️ Painel Admin
+				</a>
 				<p class="subtitle">
 					Experiência multi-SPA completa para equipes inscritas e participantes avulsos em tempo real
 				</p>
@@ -798,10 +801,6 @@
 					■ FINALIZADA (FINISHED)
 				{/if}
 			</div>
-
-			<a href="/admin" class="btn btn-sm btn-outline" style="text-decoration: none;">
-				⚙️ Painel Admin
-			</a>
 		</div>
 	</header>
 
@@ -1799,6 +1798,19 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+		flex: 1 1 auto;
+	}
+
+	.brand > div:not(.brand-badge) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		flex: 1 1 auto;
+		gap: 0.2rem 0.75rem;
+	}
+
+	.brand > div:not(.brand-badge) > a {
+		margin-left: auto;
 	}
 
 	.brand-badge {
@@ -1822,6 +1834,7 @@
 		margin: 0.2rem 0 0;
 		font-size: 0.85rem;
 		color: #94a3b8;
+		flex-basis: 100%;
 	}
 
 	.topbar-controls {
@@ -1884,9 +1897,9 @@
 	.spa-navbar {
 		display: flex;
 		flex-wrap: wrap;
-		justify-content: space-between;
+		justify-content: center;
 		align-items: center;
-		gap: 0.85rem;
+		gap: 0.75rem;
 		background: #1e293b;
 		border: 1px solid #334155;
 		border-radius: 12px;
@@ -1895,18 +1908,26 @@
 
 	.spa-tabs {
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		justify-content: center;
+		align-items: center;
 		gap: 0.5rem;
+		width: 100%;
+		margin: 0 auto;
+		overflow-x: auto;
 	}
 
 	.spa-tab {
 		background: #0f172a;
 		border: 1px solid #334155;
 		color: #cbd5e1;
-		padding: 0.5rem 0.9rem;
+		padding: 0.5rem 0.85rem;
 		border-radius: 8px;
-		font-size: 0.84rem;
+		font-size: 0.82rem;
 		font-weight: 600;
+		white-space: nowrap;
+		flex-shrink: 0;
 		cursor: pointer;
 	}
 
@@ -1919,8 +1940,10 @@
 	.identity-cluster {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.5rem;
 		flex-wrap: wrap;
+		margin: 0 auto;
 	}
 
 	.connected-badge {
@@ -1959,18 +1982,18 @@
 	}
 
 	.lifecycle-steps-row {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		align-items: stretch;
 		gap: 0.75rem;
-	}
-
-	@media (max-width: 900px) {
-		.lifecycle-steps-row {
-			grid-template-columns: repeat(2, 1fr);
-		}
+		width: 100%;
+		overflow-x: auto;
 	}
 
 	.step-item {
+		flex: 1 1 0%;
+		min-width: 0;
 		display: flex;
 		align-items: center;
 		gap: 0.65rem;
@@ -1995,6 +2018,7 @@
 	.step-num {
 		width: 26px;
 		height: 26px;
+		flex-shrink: 0;
 		border-radius: 50%;
 		background: #334155;
 		color: #f8fafc;
@@ -2126,7 +2150,11 @@
 	.auth-prompt-buttons {
 		display: flex;
 		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
 		gap: 0.75rem;
+		width: 100%;
+		margin: 0 auto;
 	}
 
 	.panel-header {
@@ -2135,26 +2163,6 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		gap: 0.75rem;
-	}
-
-	.panel-header h2 {
-		margin: 0;
-		font-size: 1.08rem;
-	}
-
-	.panel-desc {
-		margin: 0.25rem 0 0;
-		font-size: 0.84rem;
-		color: #94a3b8;
-	}
-
-	.board-builder-actions {
-		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.situational-metrics-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 		gap: 0.65rem;
@@ -2188,6 +2196,26 @@
 	.sit-metric strong {
 		font-size: 1.05rem;
 		margin-top: 0.15rem;
+		border-color: #22c55e;
+		background: rgba(34, 197, 94, 0.1);
+	}
+
+	.sit-metric.unmarked-hit {
+		border-color: #f59e0b;
+		background: rgba(245, 158, 11, 0.1);
+	}
+
+	.sit-label {
+		font-size: 0.68rem;
+		line-height: 1.25;
+		color: #94a3b8;
+		text-transform: uppercase;
+	}
+
+	.sit-metric strong {
+		font-size: 1rem;
+		margin-top: 0.2rem;
+		white-space: nowrap;
 	}
 
 	.conflict-alert {
