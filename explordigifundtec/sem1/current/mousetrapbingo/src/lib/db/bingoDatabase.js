@@ -16,7 +16,7 @@ import {
 	EXPECTED_NOT_IN_BOARD_COUNT,
 	PLAYER_BOARD_SIZE,
 	TOTAL_BINGO_CARDS,
-	resolveCardText,
+	getBingoCardsSeed,
 	validateCardSelection
 } from './cardingSeed.js';
 import {
@@ -570,11 +570,11 @@ export class BingoDatabase {
 				store.scores.clear();
 			}
 
-			for (const card of BINGO_CARDS_SEED) {
+			for (const card of getBingoCardsSeed(thresholdDistanceMeters)) {
 				store.carding.set(card.id, {
 					id: card.id,
 					alias: card.alias,
-					guireptext: resolveCardText(card.guireptext, thresholdDistanceMeters),
+					guireptext: card.guireptext,
 					cardexcludes: [...card.cardexcludes]
 				});
 			}
@@ -635,11 +635,11 @@ export class BingoDatabase {
 
 		batch.set(this.sessionRef, sessionData);
 
-		for (const card of BINGO_CARDS_SEED) {
+		for (const card of getBingoCardsSeed(thresholdDistanceMeters)) {
 			batch.set(this.cardDocRef(card.id), {
 				id: card.id,
 				alias: card.id !== undefined ? card.alias : '',
-				guireptext: resolveCardText(card.guireptext, thresholdDistanceMeters),
+				guireptext: card.guireptext,
 				cardexcludes: [...card.cardexcludes]
 			});
 		}

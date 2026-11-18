@@ -514,38 +514,59 @@
 		</div>
 
 		<div class="manual-actions-grid">
-			<button type="button" class="btn btn-outline" disabled={busyAction !=='' } onclick={()=>
-				handleInitDb(true, SESSION_STATUS.CREATED)}
-				>
-				◌ Criar Sessão em Espera (Pré-Lobby)
-			</button>
+			<div class="actions-segment">
+				<div class="actions-section-divider" role="separator">
+					<span>LOBBY</span>
+				</div>
+				<div class="actions-segment-buttons">
+					<button type="button" class="btn btn-outline" disabled={busyAction !=='' } onclick={()=>
+						handleInitDb(true, SESSION_STATUS.CREATED)}
+						>
+						◌ Criar Sessão em Espera (Pré-Lobby)
+					</button>
 
-			<button type="button" class="btn btn-secondary" disabled={busyAction !=='' } onclick={()=>
-				handleInitDb(false, SESSION_STATUS.LOBBY)}
-				>
-				🗄️ Inicializar DB & Ativar Lobby (LOBBY)
-			</button>
+					<button type="button" class="btn btn-secondary" disabled={busyAction !=='' } onclick={()=>
+						handleInitDb(false, SESSION_STATUS.LOBBY)}
+						>
+						🗄️ Inicializar DB & Ativar Lobby (LOBBY)
+					</button>
+				</div>
+			</div>
 
-			<button type="button" class="btn btn-start" disabled={busyAction !=='' ||
-				snapshot.session?.status===SESSION_STATUS.LIVE} onclick={handleStartSession}>
-				▶ Iniciar Torneio Manualmente (LIVE)
-			</button>
+			<div class="actions-segment">
+				<div class="actions-section-divider" role="separator">
+					<span>PARTIDA</span>
+				</div>
+				<div class="actions-segment-buttons">
+					<button type="button" class="btn btn-start" disabled={busyAction !=='' ||
+						snapshot.session?.status===SESSION_STATUS.LIVE} onclick={handleStartSession}>
+						▶ Iniciar Torneio Manualmente (LIVE)
+					</button>
 
-			<button type="button" class="btn btn-finish" disabled={busyAction !=='' || !snapshot.initialized ||
-				snapshot.session?.status===SESSION_STATUS.FINISHED} onclick={handleFinishSession}>
-				⏹ Encerrar Torneio Manualmente (FINISHED)
-			</button>
+					<button type="button" class="btn btn-finish" disabled={busyAction !=='' || !snapshot.initialized ||
+						snapshot.session?.status===SESSION_STATUS.FINISHED} onclick={handleFinishSession}>
+						⏹ Encerrar Torneio Manualmente (FINISHED)
+					</button>
+				</div>
+			</div>
 
-			<button type="button" class="btn btn-outline" disabled={busyAction !=='' || !snapshot.initialized ||
-				snapshot.session?.status===SESSION_STATUS.LOBBY} onclick={handleReturnToLobby}>
-				↺ Retornar ao Lobby
-			</button>
+			<div class="actions-segment">
+				<div class="actions-section-divider" role="separator">
+					<span>AH SH1T, HERE WE GO AGAIN</span>
+				</div>
+				<div class="actions-segment-buttons">
+					<button type="button" class="btn btn-outline" disabled={busyAction !=='' || !snapshot.initialized ||
+						snapshot.session?.status===SESSION_STATUS.LOBBY} onclick={handleReturnToLobby}>
+						↺ Retornar ao Lobby
+					</button>
 
-			<button type="button" class="btn btn-danger-outline" disabled={busyAction !=='' } onclick={()=>
-				handleInitDb(true)}
-				>
-				♻️ Reinicializar DB (Sobrescrever)
-			</button>
+					<button type="button" class="btn btn-danger-outline" disabled={busyAction !=='' } onclick={()=>
+						handleInitDb(true)}
+						>
+						♻️ Reinicializar DB (Sobrescrever)
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<div class="metrics-strip">
@@ -1136,8 +1157,48 @@
 
 	.manual-actions-grid {
 		display: flex;
+		flex-direction: column;
+		gap: 1.1rem;
+		width: 100%;
+	}
+
+	.actions-segment {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		width: 100%;
+	}
+
+	.actions-section-divider {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		gap: 0.85rem;
+		color: #38bdf8;
+		font-size: 0.76rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.actions-section-divider::before,
+	.actions-section-divider::after {
+		content: '';
+		flex: 1 1 0%;
+		height: 1px;
+		background-color: #38bdf8;
+	}
+
+	.actions-section-divider span {
+		white-space: nowrap;
+	}
+
+	.actions-segment-buttons {
+		display: flex;
 		flex-wrap: wrap;
+		justify-content: center;
 		gap: 0.75rem;
+		width: 100%;
 	}
 
 	.btn {
