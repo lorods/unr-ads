@@ -42,4 +42,5 @@ Antes de implementar este CHECKPOINT 4, ponderar: o repositório já tem o sufic
 >   5. **Persistência de marcações do participante, visão situacional da cartela e histórico de sessões anteriores (`src/lib/db/bingoDatabase.js` — requisito `e`):** Adicionados em `BingoDatabase` os métodos `updatePlayerBoard`, `updatePlayerMarkedCards`, `togglePlayerCardMark`, `updatePlayerName`, `getPlayerBoardView` (detalhando cards escolhidos, não selecionados, marcados e não marcados que se concretizaram ou não) e `getPreviousSessionsHistory` (com indexação multi-sessão em `localStorage` e consulta à coleção `bingo` no Firestore).
 >   6. **Endpoints server-side do SvelteKit (`src/routes/api/bingo/participant/+server.js` e `src/routes/api/bingo/history/+server.js` — requisitos `e` e `f`):** Criadas as rotas de backend para cadastramento participativo com validação server-side de originalidade (75%) e criptografia de credenciais, reacesso via passphrase, montagem/marcação de cartela e listagem do histórico de resultados e pontuações das sessões anteriores.
 
-> * CHECKPOINT 4.1 —  Centralizar mais elementos da página na rota `/admin`
+> * [DONE] CHECKPOINT 4.1 —  Centralizar mais elementos da página na rota `/admin`
+> * [PENDING] CHECKPOINT 4.2 — Corrigir estados dessincronizados de cartelas: ![[unsyncedstatesbug.png]]
