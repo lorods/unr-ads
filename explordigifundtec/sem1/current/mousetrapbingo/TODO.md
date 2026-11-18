@@ -43,4 +43,4 @@ Antes de implementar este CHECKPOINT 4, ponderar: o repositório já tem o sufic
 >   6. **Endpoints server-side do SvelteKit (`src/routes/api/bingo/participant/+server.js` e `src/routes/api/bingo/history/+server.js` — requisitos `e` e `f`):** Criadas as rotas de backend para cadastramento participativo com validação server-side de originalidade (75%) e criptografia de credenciais, reacesso via passphrase, montagem/marcação de cartela e listagem do histórico de resultados e pontuações das sessões anteriores.
 
 > * [DONE] CHECKPOINT 4.1 —  Centralizar mais elementos da página na rota `/admin`
-> * [PENDING] CHECKPOINT 4.2 — Corrigir estados dessincronizados de cartelas: ![][./assets/unsyncedstatesbug.png]
+> * [PENDING] CHECKPOINT 4.2 — Corrigir estados dessincronizados de cartelas: ![](./assets/unsyncedstatesbug.png)
