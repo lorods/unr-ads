@@ -513,7 +513,11 @@
 			// Envia ao backend para criptografia AES-256-GCM + scrypt e validação server-side (Requisitos E e F)
 			const existingMatch = snapshot.results.find(
 				(r) =>
-					(connectedParticipant?.playerId && r.playerId === connectedParticipant.playerId) ||
+					(targetType === PARTICIPANT_TYPE.TEAM &&
+						selectedTeamId &&
+						(r.teamId === selectedTeamId ||
+							r.playerId === selectedTeamId ||
+							r.playerId === `team_${selectedTeamId}`)) ||
 					(r.playerName &&
 						r.playerName.trim().toLowerCase() === candidateName.trim().toLowerCase())
 			);
@@ -525,10 +529,7 @@
 					action: dialogMode === 'reaccess' ? 'reaccess' : 'register',
 					sessionId: snapshot.sessionId,
 					sessionStatus: currentSessionStatus,
-					playerId:
-						dialogMode === 'reaccess'
-							? (connectedParticipant?.playerId ?? existingMatch?.playerId ?? null)
-							: (connectedParticipant?.playerId ?? null),
+					playerId: dialogMode === 'reaccess' ? (existingMatch?.playerId ?? null) : null,
 					participantType: targetType,
 					participantName: candidateName,
 					selectedTeamId: targetType === PARTICIPANT_TYPE.TEAM ? selectedTeamId : null,
@@ -541,7 +542,7 @@
 							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards),
 					existingParticipants: effectiveParticipants,
 					storedCredentials:
-						existingMatch?.credentials ?? connectedParticipant?.credentials ?? null
+						dialogMode === 'reaccess' ? (existingMatch?.credentials ?? null) : null
 				})
 			});
 
@@ -561,39 +562,27 @@
 
 			// Sincroniza com a instância local/Firestore do cliente para reatividade imediata entre abas
 			if (dialogMode === 'register' && snapshot.initialized) {
-				if (
-					connectedParticipant?.playerId &&
-					connectedParticipant.playerId === payload.playerId &&
-					currentPlayerRecord &&
-					currentPlayerRecord.playerName !== payload.playerName
-				) {
-					await dbInstance.updatePlayerName({
-						playerId: payload.playerId,
-						playerName: payload.playerName,
-						participantType: payload.participantType,
-						teamId: payload.teamId,
-						credentials: payload.credentials
-					});
-				} else {
-					const boardToSave =
-						Array.isArray(currentPlayerRecord?.selectedCardIds) &&
-						currentPlayerRecord.selectedCardIds.length === PLAYER_BOARD_SIZE
-							? currentPlayerRecord.selectedCardIds
-							: draftSelectedCardIds.length === PLAYER_BOARD_SIZE
-								? draftSelectedCardIds
-								: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+				const targetExistingRecord = snapshot.results.find(
+					(r) => r.playerId === payload.playerId
+				);
+				const boardToSave =
+					Array.isArray(targetExistingRecord?.selectedCardIds) &&
+					targetExistingRecord.selectedCardIds.length === PLAYER_BOARD_SIZE
+						? targetExistingRecord.selectedCardIds
+						: draftSelectedCardIds.length === PLAYER_BOARD_SIZE
+							? draftSelectedCardIds
+							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
 
-					await dbInstance.initPlayer({
-						playerId: payload.playerId,
-						playerName: payload.playerName,
-						selectedCardIds: boardToSave,
-						participantType: payload.participantType,
-						teamId: payload.teamId,
-						markedCardIds: currentPlayerRecord?.markedCardIds ?? [],
-						credentials: payload.credentials,
-						enforceOriginality: payload.participantType === PARTICIPANT_TYPE.INDIVIDUAL
-					});
-				}
+				await dbInstance.initPlayer({
+					playerId: payload.playerId,
+					playerName: payload.playerName,
+					selectedCardIds: boardToSave,
+					participantType: payload.participantType,
+					teamId: payload.teamId,
+					markedCardIds: targetExistingRecord?.markedCardIds ?? [],
+					credentials: payload.credentials,
+					enforceOriginality: payload.participantType === PARTICIPANT_TYPE.INDIVIDUAL
+				});
 			}
 
 			persistConnectedParticipant(snapshot.sessionId, {

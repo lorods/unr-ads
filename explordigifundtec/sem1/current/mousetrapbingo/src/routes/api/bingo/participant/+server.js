@@ -152,13 +152,11 @@ export async function POST({ request }) {
 				? PARTICIPANT_TYPE.TEAM
 				: PARTICIPANT_TYPE.INDIVIDUAL;
 
-		const candidatePlayerId =
-			body?.playerId ||
-			deriveParticipantId({
-				participantName: body?.participantName ?? '',
-				participantType,
-				teamId: body?.selectedTeamId ?? null
-			});
+		const candidatePlayerId = deriveParticipantId({
+			participantName: body?.participantName ?? '',
+			participantType,
+			teamId: body?.selectedTeamId ?? null
+		});
 
 		const registrationValidation = validateParticipantRegistration({
 			participantType,
@@ -168,7 +166,8 @@ export async function POST({ request }) {
 			passphrase: body?.passphrase ?? '',
 			sessionStatus: effectiveStatus,
 			existingParticipants: mergedParticipants,
-			excludePlayerId: candidatePlayerId
+			excludePlayerId:
+				participantType === PARTICIPANT_TYPE.INDIVIDUAL ? (body?.playerId ?? null) : null
 		});
 
 		if (!registrationValidation.valid) {
@@ -187,19 +186,14 @@ export async function POST({ request }) {
 
 		const resolvedName = registrationValidation.resolvedName;
 		const resolvedTeamId = registrationValidation.resolvedTeam?.id ?? null;
-		const existingConnectedPlayer = body?.playerId
-			? mergedParticipants.find((p) => p?.playerId === body.playerId)
-			: null;
-		const finalPlayerId = existingConnectedPlayer
-			? existingConnectedPlayer.playerId
-			: deriveParticipantId({
-					participantName: resolvedName,
-					participantType,
-					teamId: resolvedTeamId
-				});
+		const finalPlayerId = deriveParticipantId({
+			participantName: resolvedName,
+			participantType,
+			teamId: resolvedTeamId
+		});
 
 		const existingPlayer = mergedParticipants.find((p) => p?.playerId === finalPlayerId);
-		if (existingPlayer?.credentials && !existingConnectedPlayer) {
+		if (existingPlayer?.credentials) {
 			const passOk = verifyEncryptedParticipantCredentials(
 				body?.passphrase ?? '',
 				existingPlayer.credentials
