@@ -20,9 +20,11 @@
 		normalizeSessionStatus
 	} from '$lib/db/bingoDatabase.js';
 	import {
+		TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
 		isParticipantNameLocked,
 		validateParticipantNameOriginality,
-		validateParticipantRegistration
+		validateParticipantRegistration,
+		validateTournamentTeamAvailability
 	} from '$lib/db/participantValidation.js';
 	import { isFirebaseConfigured } from '$lib/firebase/client.js';
 
@@ -59,6 +61,7 @@
 	let customParticipantName = $state('');
 	let passphraseInput = $state('');
 	let dialogServerError = $state('');
+	let teamRegistrationError = $state('');
 	let dialogSubmitting = $state(false);
 
 	// Seleção de cartas para montagem da cartela (10 cartas)
@@ -367,6 +370,64 @@
 		};
 	});
 
+	function getEffectiveSessionParticipants() {
+		if (!connectedParticipant) return snapshot.results;
+		const alreadyInResults = snapshot.results.some(
+			(r) =>
+				(connectedParticipant.playerId && r.playerId === connectedParticipant.playerId) ||
+				(connectedParticipant.teamId && r.teamId === connectedParticipant.teamId) ||
+				(connectedParticipant.playerName &&
+					r.playerName &&
+					r.playerName.trim().toLowerCase() ===
+						connectedParticipant.playerName.trim().toLowerCase())
+		);
+		return alreadyInResults ? snapshot.results : [...snapshot.results, connectedParticipant];
+	}
+
+	async function validateSelectedTeamOnClientAndServer(teamIdToCheck = selectedTeamId) {
+		if (dialogMode !== 'register' || isAvulsoToggleRight) return { valid: true };
+
+		const chosenTeam = REGISTERED_TOURNAMENT_TEAMS.find((t) => t.id === teamIdToCheck) ?? null;
+		const effectiveParticipants = getEffectiveSessionParticipants();
+
+		const clientCheck = validateTournamentTeamAvailability(
+			{
+				selectedTeamId: teamIdToCheck,
+				participantName: chosenTeam?.name ?? '',
+				team: chosenTeam
+			},
+			effectiveParticipants
+		);
+
+		if (!clientCheck.valid) {
+			teamRegistrationError = clientCheck.error ?? TEAM_ALREADY_REGISTERED_ERROR_MESSAGE;
+		}
+
+		try {
+			const response = await fetch('/api/bingo/participant', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'validate_team',
+					sessionId: snapshot.sessionId,
+					selectedTeamId: teamIdToCheck,
+					participantName: chosenTeam?.name ?? '',
+					selectedTeam: chosenTeam ? { ...chosenTeam } : null,
+					existingParticipants: effectiveParticipants
+				})
+			});
+			const payload = await response.json();
+			if ((!response.ok || !payload.ok) && selectedTeamId === teamIdToCheck) {
+				teamRegistrationError = payload?.error ?? TEAM_ALREADY_REGISTERED_ERROR_MESSAGE;
+				return { valid: false, error: teamRegistrationError };
+			}
+		} catch {
+			// Mantém o resultado da validação client-side caso o servidor não responda
+		}
+
+		return { valid: clientCheck.valid, error: teamRegistrationError || null };
+	}
+
 	function handleToggleParticipationType() {
 		if (
 			connectedParticipant &&
@@ -381,12 +442,18 @@
 		}
 		isAvulsoToggleRight = !isAvulsoToggleRight;
 		dialogServerError = '';
+		teamRegistrationError = '';
 	}
 
 	function openIdentityModal(mode = 'register') {
 		dialogMode = mode;
 		dialogServerError = '';
+		teamRegistrationError = '';
 		showIdentityDialog = true;
+
+		if (mode === 'register' && connectedParticipant && !isAvulsoToggleRight) {
+			validateSelectedTeamOnClientAndServer(selectedTeamId);
+		}
 	}
 
 	async function handleSubmitIdentityDialog(event) {
@@ -394,11 +461,7 @@
 		if (!dbInstance) return;
 
 		dialogServerError = '';
-		const cleanPassphrase = passphraseInput.trim();
-		if (cleanPassphrase.length < 4) {
-			dialogServerError = 'A passphrase deve possuir pelo menos 4 caracteres.';
-			return;
-		}
+		teamRegistrationError = '';
 
 		const targetType = isAvulsoToggleRight
 			? PARTICIPANT_TYPE.INDIVIDUAL
@@ -408,23 +471,41 @@
 			targetType === PARTICIPANT_TYPE.TEAM
 				? (chosenTeam?.name ?? '')
 				: customParticipantName.trim();
+		const effectiveParticipants = getEffectiveSessionParticipants();
+
+		const cleanPassphrase = passphraseInput.trim();
 
 		if (dialogMode === 'register') {
-			// Validação client-side prévia (Requisito F)
+			// Validação client-side prévia (Requisito F + validação de equipe já registrada / mesmo usuário conectado)
 			const preCheck = validateParticipantRegistration({
 				participantType: targetType,
 				participantName: candidateName,
 				selectedTeamId: targetType === PARTICIPANT_TYPE.TEAM ? selectedTeamId : '',
+				selectedTeam: targetType === PARTICIPANT_TYPE.TEAM && chosenTeam ? { ...chosenTeam } : null,
 				passphrase: cleanPassphrase,
 				sessionStatus: currentSessionStatus,
-				existingParticipants: snapshot.results,
-				excludePlayerId: connectedParticipant?.playerId ?? null
+				existingParticipants: effectiveParticipants,
+				excludePlayerId:
+					targetType === PARTICIPANT_TYPE.INDIVIDUAL
+						? (connectedParticipant?.playerId ?? null)
+						: null
 			});
 
 			if (!preCheck.valid) {
+				if (targetType === PARTICIPANT_TYPE.TEAM && preCheck.field === 'selectedTeamId') {
+					teamRegistrationError = preCheck.error ?? TEAM_ALREADY_REGISTERED_ERROR_MESSAGE;
+					// Também dispara a validação no servidor para garantir consistência client + server
+					await validateSelectedTeamOnClientAndServer(selectedTeamId);
+					return;
+				}
 				dialogServerError = preCheck.error ?? ORIGINALITY_ERROR_MESSAGE;
 				return;
 			}
+		}
+
+		if (cleanPassphrase.length < 4) {
+			dialogServerError = 'A passphrase deve possuir pelo menos 4 caracteres.';
+			return;
 		}
 
 		dialogSubmitting = true;
@@ -444,16 +525,21 @@
 					action: dialogMode === 'reaccess' ? 'reaccess' : 'register',
 					sessionId: snapshot.sessionId,
 					sessionStatus: currentSessionStatus,
-					playerId: connectedParticipant?.playerId ?? existingMatch?.playerId ?? null,
+					playerId:
+						dialogMode === 'reaccess'
+							? (connectedParticipant?.playerId ?? existingMatch?.playerId ?? null)
+							: (connectedParticipant?.playerId ?? null),
 					participantType: targetType,
 					participantName: candidateName,
 					selectedTeamId: targetType === PARTICIPANT_TYPE.TEAM ? selectedTeamId : null,
+					selectedTeam:
+						targetType === PARTICIPANT_TYPE.TEAM && chosenTeam ? { ...chosenTeam } : null,
 					passphrase: cleanPassphrase,
 					selectedCardIds:
 						draftSelectedCardIds.length === PLAYER_BOARD_SIZE
 							? draftSelectedCardIds
 							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards),
-					existingParticipants: snapshot.results,
+					existingParticipants: effectiveParticipants,
 					storedCredentials:
 						existingMatch?.credentials ?? connectedParticipant?.credentials ?? null
 				})
@@ -461,7 +547,15 @@
 
 			const payload = await response.json();
 			if (!response.ok || !payload.ok) {
-				dialogServerError = payload?.error || ORIGINALITY_ERROR_MESSAGE;
+				if (
+					dialogMode === 'register' &&
+					targetType === PARTICIPANT_TYPE.TEAM &&
+					(payload?.field === 'selectedTeamId' || payload?.code === 'TEAM_ALREADY_REGISTERED')
+				) {
+					teamRegistrationError = payload?.error || TEAM_ALREADY_REGISTERED_ERROR_MESSAGE;
+				} else {
+					dialogServerError = payload?.error || ORIGINALITY_ERROR_MESSAGE;
+				}
 				return;
 			}
 
@@ -1592,6 +1686,7 @@
 						onclick={() => {
 							dialogMode = 'register';
 							dialogServerError = '';
+							teamRegistrationError = '';
 						}}
 					>
 						➕ Cadastrar / Atualizar Participação
@@ -1602,6 +1697,7 @@
 						onclick={() => {
 							dialogMode = 'reaccess';
 							dialogServerError = '';
+							teamRegistrationError = '';
 						}}
 					>
 						🔄 Reacessar Cartela Existente
@@ -1649,6 +1745,10 @@
 							<select
 								id="team-select"
 								bind:value={selectedTeamId}
+								onchange={() => {
+									teamRegistrationError = '';
+									dialogServerError = '';
+								}}
 								disabled={Boolean(
 									connectedParticipant && nameIsLockedBySession && dialogMode === 'register'
 								)}
@@ -1659,12 +1759,18 @@
 									</option>
 								{/each}
 							</select>
-							<small class="field-hint">
-								Nome incorporado na cartela:
-								<strong>
-									{REGISTERED_TOURNAMENT_TEAMS.find((t) => t.id === selectedTeamId)?.name}
-								</strong>
-							</small>
+							{#if teamRegistrationError && dialogMode === 'register'}
+								<small class="field-hint team-registration-error" role="alert">
+									{teamRegistrationError}
+								</small>
+							{:else}
+								<small class="field-hint">
+									Nome incorporado na cartela:
+									<strong>
+										{REGISTERED_TOURNAMENT_TEAMS.find((t) => t.id === selectedTeamId)?.name}
+									</strong>
+								</small>
+							{/if}
 						</div>
 					{:else}
 						<!-- MODO DIREITA: PARTICIPAÇÃO AVULSA COM VALIDAÇÃO DE 75% DE SEMELHANÇA VOCABULAR -->
@@ -2792,6 +2898,11 @@
 	.field-hint {
 		font-size: 0.76rem;
 		color: #94a3b8;
+	}
+
+	.team-registration-error {
+		color: #ef4444;
+		font-weight: 700;
 	}
 
 	.originality-error-label {

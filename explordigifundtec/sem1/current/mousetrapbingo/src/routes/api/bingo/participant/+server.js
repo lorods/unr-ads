@@ -12,7 +12,8 @@ import { generateValidCardSelection } from '$lib/db/cardingSeed.js';
 import {
 	isParticipantNameLocked,
 	validateParticipantNameOriginality,
-	validateParticipantRegistration
+	validateParticipantRegistration,
+	validateTournamentTeamAvailability
 } from '$lib/db/participantValidation.js';
 import {
 	createEncryptedParticipantCredentials,
@@ -31,6 +32,8 @@ import {
 export async function GET({ url }) {
 	const sessionId = (url.searchParams.get('sessionId') || DEFAULT_SESSION_ID).trim();
 	const candidateName = url.searchParams.get('candidateName');
+	const teamId = url.searchParams.get('teamId');
+	const teamName = url.searchParams.get('teamName');
 	const excludePlayerId = url.searchParams.get('excludePlayerId') || null;
 	const playerId = url.searchParams.get('playerId');
 	const authToken = url.searchParams.get('authToken');
@@ -44,6 +47,17 @@ export async function GET({ url }) {
 			excludePlayerId,
 			includeRegisteredTeams: true
 		});
+	}
+
+	let teamAvailability = null;
+	if (teamId !== null || teamName !== null) {
+		teamAvailability = validateTournamentTeamAvailability(
+			{
+				selectedTeamId: teamId ?? '',
+				participantName: teamName ?? ''
+			},
+			snapshot.results
+		);
 	}
 
 	let boardView = null;
@@ -61,6 +75,7 @@ export async function GET({ url }) {
 		registeredTeams: REGISTERED_TOURNAMENT_TEAMS,
 		disclaimer: PARTICIPATION_CREDIT_DISCLAIMER,
 		originality,
+		teamAvailability,
 		boardView
 	});
 }
@@ -111,6 +126,26 @@ export async function POST({ request }) {
 		);
 	}
 
+	if (action === 'validate_team') {
+		const teamAvailability = validateTournamentTeamAvailability(
+			{
+				selectedTeamId: body?.selectedTeamId ?? '',
+				participantName: body?.participantName ?? '',
+				team: body?.selectedTeam ?? null
+			},
+			mergedParticipants
+		);
+		return json(
+			{
+				ok: teamAvailability.valid,
+				field: 'selectedTeamId',
+				code: teamAvailability.valid ? null : 'TEAM_ALREADY_REGISTERED',
+				...teamAvailability
+			},
+			{ status: teamAvailability.valid ? 200 : 409 }
+		);
+	}
+
 	if (action === 'register') {
 		const participantType =
 			body?.participantType === PARTICIPANT_TYPE.TEAM
@@ -129,6 +164,7 @@ export async function POST({ request }) {
 			participantType,
 			participantName: body?.participantName ?? '',
 			selectedTeamId: body?.selectedTeamId ?? '',
+			selectedTeam: body?.selectedTeam ?? null,
 			passphrase: body?.passphrase ?? '',
 			sessionStatus: effectiveStatus,
 			existingParticipants: mergedParticipants,
@@ -140,24 +176,30 @@ export async function POST({ request }) {
 				{
 					ok: false,
 					field: registrationValidation.field,
+					code: registrationValidation.code ?? null,
 					error: registrationValidation.error,
 					conflictingName: registrationValidation.conflictingName ?? null,
 					similarityRatio: registrationValidation.similarityRatio ?? 0
 				},
-				{ status: 422 }
+				{ status: registrationValidation.code === 'TEAM_ALREADY_REGISTERED' ? 409 : 422 }
 			);
 		}
 
 		const resolvedName = registrationValidation.resolvedName;
 		const resolvedTeamId = registrationValidation.resolvedTeam?.id ?? null;
-		const finalPlayerId = deriveParticipantId({
-			participantName: resolvedName,
-			participantType,
-			teamId: resolvedTeamId
-		});
+		const existingConnectedPlayer = body?.playerId
+			? mergedParticipants.find((p) => p?.playerId === body.playerId)
+			: null;
+		const finalPlayerId = existingConnectedPlayer
+			? existingConnectedPlayer.playerId
+			: deriveParticipantId({
+					participantName: resolvedName,
+					participantType,
+					teamId: resolvedTeamId
+				});
 
 		const existingPlayer = mergedParticipants.find((p) => p?.playerId === finalPlayerId);
-		if (existingPlayer?.credentials) {
+		if (existingPlayer?.credentials && !existingConnectedPlayer) {
 			const passOk = verifyEncryptedParticipantCredentials(
 				body?.passphrase ?? '',
 				existingPlayer.credentials

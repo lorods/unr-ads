@@ -16,6 +16,12 @@ export const ORIGINALITY_ERROR_MESSAGE =
 	'erro: nome de participação não satisfaz critérios de originalidade';
 
 /**
+ * Mensagem de erro exibida quando uma equipe inscrita no torneio já está registrada na sessão atual.
+ */
+export const TEAM_ALREADY_REGISTERED_ERROR_MESSAGE =
+	'Erro: esta equipe do torneio já está registrada na sessão atual. Selecione outra equipe.';
+
+/**
  * Limiar de semelhança vocabular (75% ou mais das palavras de outro nome de participação).
  */
 export const ORIGINALITY_WORD_SIMILARITY_THRESHOLD = 0.75;
@@ -200,12 +206,153 @@ export function isParticipantNameLocked(sessionStatus) {
 }
 
 /**
+ * Verifica se uma equipe do torneio (identificada por nome, ID ou objeto de equipe)
+ * já está registrada na sessão atual.
+ *
+ * @param {string | { id?: string, teamId?: string, name?: string, playerName?: string, selectedTeamId?: string, participantName?: string, team?: { id?: string, name?: string } } | null | undefined} teamCandidate
+ * @param {Array<any>} [existingParticipants=[]]
+ * @param {object} [options]
+ * @param {ReadonlyArray<{ id: string, name: string, shortCode?: string }>} [options.teamsCatalog=REGISTERED_TOURNAMENT_TEAMS]
+ * @returns {{
+ *   valid: boolean,
+ *   error: string | null,
+ *   conflictingName: string | null,
+ *   conflictingTeam: { id: string, name: string, shortCode?: string } | null,
+ *   conflictingParticipant: any | null
+ * }}
+ */
+export function validateTournamentTeamAvailability(
+	teamCandidate,
+	existingParticipants = [],
+	{ teamsCatalog = REGISTERED_TOURNAMENT_TEAMS } = {}
+) {
+	let candidateId = '';
+	let candidateName = '';
+	let candidateObj = null;
+
+	if (typeof teamCandidate === 'string') {
+		candidateId = teamCandidate.trim().replace(/^team_/, '');
+		candidateName = teamCandidate.trim();
+	} else if (teamCandidate && typeof teamCandidate === 'object') {
+		candidateObj =
+			teamCandidate.team && typeof teamCandidate.team === 'object'
+				? teamCandidate.team
+				: teamCandidate;
+		candidateId = String(
+			teamCandidate.selectedTeamId ??
+				teamCandidate.teamId ??
+				candidateObj.id ??
+				''
+		)
+			.trim()
+			.replace(/^team_/, '');
+		candidateName = String(
+			teamCandidate.participantName ??
+				teamCandidate.playerName ??
+				candidateObj.name ??
+				''
+		).trim();
+	}
+
+	const matchedTeam =
+		(candidateId ? findRegisteredTeamById(candidateId, teamsCatalog) : null) ??
+		(candidateName ? findRegisteredTeamByName(candidateName, teamsCatalog) : null) ??
+		(candidateObj?.id ? findRegisteredTeamById(candidateObj.id, teamsCatalog) : null) ??
+		(candidateObj?.name ? findRegisteredTeamByName(candidateObj.name, teamsCatalog) : null);
+
+	const targetId = (matchedTeam?.id ?? candidateId).toLowerCase();
+	const targetNameNorm = normalizeTextToken(matchedTeam?.name ?? candidateName);
+
+	if (!targetId && !targetNameNorm) {
+		return {
+			valid: false,
+			error: 'Selecione uma equipe válida entre as inscritas no torneio Mousetrap.',
+			conflictingName: null,
+			conflictingTeam: null,
+			conflictingParticipant: null
+		};
+	}
+
+	if (Array.isArray(existingParticipants)) {
+		for (const item of existingParticipants) {
+			if (!item) continue;
+
+			if (typeof item === 'string') {
+				const itemNorm = normalizeTextToken(item);
+				const itemIdClean = item.trim().toLowerCase().replace(/^team_/, '');
+				if (
+					(targetId && itemIdClean === targetId) ||
+					(targetNameNorm && itemNorm === targetNameNorm)
+				) {
+					const resolvedTeamName = matchedTeam?.name ?? (candidateName || targetId);
+					return {
+						valid: false,
+						error: TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
+						conflictingName: resolvedTeamName,
+						conflictingTeam: matchedTeam ?? { id: targetId, name: resolvedTeamName },
+						conflictingParticipant: item
+					};
+				}
+				continue;
+			}
+
+			if (typeof item === 'object') {
+				const itemTeamObj = item.team && typeof item.team === 'object' ? item.team : null;
+				const explicitTeamId = String(item.teamId ?? itemTeamObj?.id ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/^team_/, '');
+				const rawPlayerId = String(item.playerId ?? item.id ?? '')
+					.trim()
+					.toLowerCase();
+				const derivedTeamIdFromPlayerId = rawPlayerId.replace(/^team_/, '');
+				const itemNameNorm = normalizeTextToken(
+					item.playerName ?? item.name ?? itemTeamObj?.name ?? ''
+				);
+
+				const idMatches =
+					targetId &&
+					(explicitTeamId
+						? explicitTeamId === targetId
+						: rawPlayerId === targetId || derivedTeamIdFromPlayerId === targetId);
+
+				const nameMatches = targetNameNorm && itemNameNorm === targetNameNorm;
+
+				if (idMatches || nameMatches) {
+					const resolvedTeamName =
+						matchedTeam?.name ?? (candidateName || item.playerName || targetId);
+					return {
+						valid: false,
+						error: TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
+						conflictingName: resolvedTeamName,
+						conflictingTeam: matchedTeam ?? {
+							id: targetId,
+							name: resolvedTeamName
+						},
+						conflictingParticipant: item
+					};
+				}
+			}
+		}
+	}
+
+	return {
+		valid: true,
+		error: null,
+		conflictingName: null,
+		conflictingTeam: null,
+		conflictingParticipant: null
+	};
+}
+
+/**
  * Valida integralmente os dados de ingresso/cadastramento participativo (client-side e server-side).
  *
  * @param {object} params
  * @param {'team' | 'individual'} params.participantType
  * @param {string} [params.participantName]
  * @param {string} [params.selectedTeamId]
+ * @param {{ id?: string, name?: string } | null} [params.selectedTeam]
  * @param {string} [params.passphrase]
  * @param {string | null} [params.sessionStatus]
  * @param {Array<any>} [params.existingParticipants]
@@ -216,6 +363,7 @@ export function validateParticipantRegistration({
 	participantType,
 	participantName = '',
 	selectedTeamId = '',
+	selectedTeam = null,
 	passphrase = '',
 	sessionStatus = null,
 	existingParticipants = [],
@@ -235,27 +383,49 @@ export function validateParticipantRegistration({
 		};
 	}
 
-	const cleanPassphrase = typeof passphrase === 'string' ? passphrase.trim() : '';
-	if (cleanPassphrase.length < 4) {
-		return {
-			valid: false,
-			field: 'passphrase',
-			error: 'A passphrase deve conter pelo menos 4 caracteres.',
-			resolvedName: null,
-			resolvedTeam: null
-		};
-	}
-
 	if (participantType === PARTICIPANT_TYPE.TEAM) {
 		const matchedTeam =
-			findRegisteredTeamById(selectedTeamId, teamsCatalog) ??
-			findRegisteredTeamByName(participantName, teamsCatalog);
+			findRegisteredTeamById(selectedTeamId || selectedTeam?.id || '', teamsCatalog) ??
+			findRegisteredTeamByName(participantName || selectedTeam?.name || '', teamsCatalog);
 
 		if (!matchedTeam) {
 			return {
 				valid: false,
 				field: 'selectedTeamId',
 				error: 'Selecione uma equipe válida entre as inscritas no torneio Mousetrap.',
+				resolvedName: null,
+				resolvedTeam: null
+			};
+		}
+
+		const teamAvailability = validateTournamentTeamAvailability(
+			{
+				selectedTeamId: matchedTeam.id,
+				participantName: matchedTeam.name,
+				team: selectedTeam ?? matchedTeam
+			},
+			existingParticipants,
+			{ teamsCatalog }
+		);
+
+		if (!teamAvailability.valid) {
+			return {
+				valid: false,
+				field: 'selectedTeamId',
+				code: 'TEAM_ALREADY_REGISTERED',
+				error: teamAvailability.error,
+				conflictingName: teamAvailability.conflictingName,
+				resolvedName: null,
+				resolvedTeam: matchedTeam
+			};
+		}
+
+		const cleanPassphrase = typeof passphrase === 'string' ? passphrase.trim() : '';
+		if (cleanPassphrase.length < 4) {
+			return {
+				valid: false,
+				field: 'passphrase',
+				error: 'A passphrase deve conter pelo menos 4 caracteres.',
 				resolvedName: null,
 				resolvedTeam: null
 			};
@@ -284,6 +454,17 @@ export function validateParticipantRegistration({
 			error: originality.error,
 			conflictingName: originality.conflictingName,
 			similarityRatio: originality.similarityRatio,
+			resolvedName: null,
+			resolvedTeam: null
+		};
+	}
+
+	const cleanPassphrase = typeof passphrase === 'string' ? passphrase.trim() : '';
+	if (cleanPassphrase.length < 4) {
+		return {
+			valid: false,
+			field: 'passphrase',
+			error: 'A passphrase deve conter pelo menos 4 caracteres.',
 			resolvedName: null,
 			resolvedTeam: null
 		};

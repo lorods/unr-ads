@@ -23,8 +23,10 @@ import {
 	ORIGINALITY_ERROR_MESSAGE,
 	PARTICIPANT_TYPE,
 	PARTICIPATION_CREDIT_DISCLAIMER,
+	TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
 	isParticipantNameLocked,
-	validateParticipantNameOriginality
+	validateParticipantNameOriginality,
+	validateTournamentTeamAvailability
 } from './participantValidation.js';
 import { REGISTERED_TOURNAMENT_TEAMS } from './tournamentTeamsSeed.js';
 
@@ -34,7 +36,8 @@ export {
 	PARTICIPANT_TYPE,
 	PARTICIPATION_CREDIT_DISCLAIMER,
 	PLAYER_BOARD_SIZE,
-	REGISTERED_TOURNAMENT_TEAMS
+	REGISTERED_TOURNAMENT_TEAMS,
+	TEAM_ALREADY_REGISTERED_ERROR_MESSAGE
 };
 
 export const BINGO_COLLECTION = 'bingo';
@@ -1220,7 +1223,17 @@ export class BingoDatabase {
 			}
 
 			const nextType = participantType ?? existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL;
-			if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+			if (nextType === PARTICIPANT_TYPE.TEAM) {
+				const teamAvailability = validateTournamentTeamAvailability(
+					{ selectedTeamId: teamId, participantName: cleanName },
+					Array.from(store.results.values())
+				);
+				if (!teamAvailability.valid) {
+					throw new Error(
+						teamAvailability.error ?? TEAM_ALREADY_REGISTERED_ERROR_MESSAGE
+					);
+				}
+			} else if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
 				const originality = validateParticipantNameOriginality(
 					cleanName,
 					Array.from(store.results.values()),
@@ -1276,7 +1289,17 @@ export class BingoDatabase {
 		}
 
 		const nextType = participantType ?? existing.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL;
-		if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+		if (nextType === PARTICIPANT_TYPE.TEAM) {
+			const teamAvailability = validateTournamentTeamAvailability(
+				{ selectedTeamId: teamId, participantName: cleanName },
+				allResults
+			);
+			if (!teamAvailability.valid) {
+				throw new Error(
+					teamAvailability.error ?? TEAM_ALREADY_REGISTERED_ERROR_MESSAGE
+				);
+			}
+		} else if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
 			const originality = validateParticipantNameOriginality(cleanName, allResults, {
 				excludePlayerId: playerId,
 				includeRegisteredTeams: true
