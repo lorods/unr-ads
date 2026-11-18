@@ -1620,7 +1620,7 @@
 						<span class="toggle-section-label">Modo de Participação no Bingo:</span>
 						<div class="toggle-control-row">
 							<span class="toggle-side-label {!isAvulsoToggleRight ? 'active-side' : ''}">
-								🏁 Equipe do Torneio (Esquerda)
+								🏁 Equipe do Torneio
 							</span>
 
 							<button
@@ -1635,7 +1635,7 @@
 							</button>
 
 							<span class="toggle-side-label {isAvulsoToggleRight ? 'active-side' : ''}">
-								👤 Participação Avulsa (Direita)
+								👤 Participação Avulsa
 							</span>
 						</div>
 					</div>

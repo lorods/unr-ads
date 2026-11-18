@@ -946,9 +946,12 @@
 		align-items: center;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+		flex: 1 1 auto;
+		width: 100%;
 	}
 
 	.persistence-pill {
+		margin-left: auto;
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
