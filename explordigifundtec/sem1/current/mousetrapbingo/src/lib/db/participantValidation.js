@@ -206,6 +206,108 @@ export function isParticipantNameLocked(sessionStatus) {
 }
 
 /**
+ * Constrói o objeto comparável `{ id, name, category }` (sem `shortCode`) para uma entrada
+ * de participante avulso (CHECKPOINT 4.3).
+ *
+ * @param {string | { id?: string, playerId?: string, teamId?: string, name?: string, playerName?: string, category?: string, participantType?: string } | null | undefined} input
+ * @param {ReadonlyArray<{ id: string, name: string, category?: string }>} [teamsCatalog=REGISTERED_TOURNAMENT_TEAMS]
+ * @returns {{ id: string, name: string, category: string }}
+ */
+export function buildIndividualComparableEntry(
+	input,
+	teamsCatalog = REGISTERED_TOURNAMENT_TEAMS
+) {
+	if (input && typeof input === 'object') {
+		const rawName = String(input.name ?? input.playerName ?? '').trim();
+		const matchedTeam =
+			findRegisteredTeamById(
+				String(input.id ?? input.playerId ?? input.teamId ?? ''),
+				teamsCatalog
+			) ?? findRegisteredTeamByName(rawName, teamsCatalog);
+		const normalizedSlug = normalizeTextToken(rawName)
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '');
+		const resolvedId = String(
+			input.id ??
+				input.playerId ??
+				(matchedTeam ? matchedTeam.id : normalizedSlug ? `part_${normalizedSlug}` : '')
+		).trim();
+		const resolvedCategory = String(
+			input.category ??
+				(input.participantType === PARTICIPANT_TYPE.TEAM || matchedTeam
+					? (matchedTeam?.category ?? 'Oficial')
+					: rawName
+						? 'Avulso'
+						: '')
+		).trim();
+
+		return {
+			id: resolvedId,
+			name: rawName,
+			category: resolvedCategory
+		};
+	}
+
+	const rawName = typeof input === 'string' ? input.trim() : '';
+	const matchedTeam = findRegisteredTeamByName(rawName, teamsCatalog);
+	const normalizedSlug = normalizeTextToken(rawName)
+		.replace(/[^a-z0-9]+/g, '_')
+		.replace(/^_+|_+$/g, '');
+
+	return {
+		id: matchedTeam ? matchedTeam.id : normalizedSlug ? `part_${normalizedSlug}` : '',
+		name: rawName,
+		category: matchedTeam ? (matchedTeam.category ?? 'Oficial') : rawName ? 'Avulso' : ''
+	};
+}
+
+/**
+ * Compara `id`, `name` e `category` (`shortCode` é desnecessário para participante individual)
+ * entre o nome/entrada anterior e o novo nome/entrada individual (CHECKPOINT 4.3).
+ * Retorna um array contendo apenas as chaves que diferem (ex.: `['id', 'name']`).
+ *
+ * @param {string | { id?: string, playerId?: string, name?: string, playerName?: string, category?: string, participantType?: string }} oldIndivName
+ * @param {string | { id?: string, playerId?: string, name?: string, playerName?: string, category?: string, participantType?: string }} newIndivName
+ * @returns {Array<'id' | 'name' | 'category'>}
+ */
+export function chkIndivEntryDiff(oldIndivName, newIndivName) {
+	const oldEntry = buildIndividualComparableEntry(oldIndivName);
+	const newEntry = buildIndividualComparableEntry(newIndivName);
+
+	/** @type {Array<'id' | 'name' | 'category'>} */
+	const diffs = [];
+
+	if (oldEntry.id !== newEntry.id) {
+		diffs.push('id');
+	}
+	if (oldEntry.name.toLowerCase() !== newEntry.name.toLowerCase()) {
+		diffs.push('name');
+	}
+	if (oldEntry.category !== newEntry.category) {
+		diffs.push('category');
+	}
+
+	return diffs;
+}
+
+/**
+ * Verifica se o retorno de `chkIndivEntryDiff(oldIndivName, newIndivName)` contém
+ * exclusivamente as strings `'name'` e `'id'` (ex.: `['id', 'name']`) e nada além disso.
+ *
+ * @param {Array<string>} diffResult
+ * @returns {boolean}
+ */
+export function isValidIndivEntryDiff(diffResult) {
+	return (
+		Array.isArray(diffResult) &&
+		diffResult.length === 2 &&
+		diffResult.includes('id') &&
+		diffResult.includes('name') &&
+		diffResult.every((key) => key === 'id' || key === 'name')
+	);
+}
+
+/**
  * Verifica se uma equipe do torneio (identificada por nome, ID ou objeto de equipe)
  * já está registrada na sessão atual.
  *

@@ -21,7 +21,9 @@
 	} from '$lib/db/bingoDatabase.js';
 	import {
 		TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
+		chkIndivEntryDiff,
 		isParticipantNameLocked,
+		isValidIndivEntryDiff,
 		validateParticipantNameOriginality,
 		validateParticipantRegistration,
 		validateTournamentTeamAvailability
@@ -59,6 +61,9 @@
 	let isAvulsoToggleRight = $state(false);
 	let selectedTeamId = $state(REGISTERED_TOURNAMENT_TEAMS[0]?.id ?? 'alfa_racing');
 	let customParticipantName = $state('');
+	let showNewIndividualNameField = $state(false);
+	let newCustomParticipantName = $state('');
+	let newIndividualNameError = $state('');
 	let passphraseInput = $state('');
 	let dialogServerError = $state('');
 	let teamRegistrationError = $state('');
@@ -139,6 +144,20 @@
 		};
 	});
 
+	// Participante avulso já cadastrado cujo nome corresponde ao preenchido no campo #custom-participant-name (CHECKPOINT 4.3)
+	let existingRegisteredIndividualMatch = $derived.by(() => {
+		const trimmed = customParticipantName.trim().toLowerCase();
+		if (!trimmed) return null;
+		return (
+			getEffectiveSessionParticipants().find(
+				(r) =>
+					r?.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+					typeof (r.playerName ?? r.name) === 'string' &&
+					(r.playerName ?? r.name).trim().toLowerCase() === trimmed
+			) ?? null
+		);
+	});
+
 	// Validação reativa de originalidade (75% das palavras) para participação avulsa (Requisito F)
 	let clientOriginalityCheck = $derived.by(() => {
 		if (dialogMode === 'reaccess') {
@@ -151,14 +170,8 @@
 		if (!trimmed) {
 			return { valid: false, error: null, conflictingName: null, similarityRatio: 0 };
 		}
-		const existingExactSameIndividual = snapshot.results.find(
-			(r) =>
-				r.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
-				typeof r.playerName === 'string' &&
-				r.playerName.trim().toLowerCase() === trimmed.toLowerCase()
-		);
 		return validateParticipantNameOriginality(trimmed, getEffectiveSessionParticipants(), {
-			excludePlayerId: existingExactSameIndividual?.playerId ?? null,
+			excludePlayerId: existingRegisteredIndividualMatch?.playerId ?? null,
 			includeRegisteredTeams: true
 		});
 	});
@@ -167,11 +180,63 @@
 		if (dialogMode === 'reaccess' || participantType !== PARTICIPANT_TYPE.INDIVIDUAL) {
 			return null;
 		}
-		if (dialogServerError === ORIGINALITY_ERROR_MESSAGE) {
+		if (!showNewIndividualNameField && dialogServerError === ORIGINALITY_ERROR_MESSAGE) {
 			return ORIGINALITY_ERROR_MESSAGE;
 		}
 		if (customParticipantName.trim().length > 0 && !clientOriginalityCheck.valid) {
 			return clientOriginalityCheck.error;
+		}
+		return null;
+	});
+
+	// Validação reativa do novo nome de participante avulso (CHECKPOINT 4.3)
+	let currentIndivEntryDiff = $derived.by(() => {
+		if (!showNewIndividualNameField) return [];
+		return chkIndivEntryDiff(customParticipantName.trim(), newCustomParticipantName.trim());
+	});
+
+	let isCurrentIndivDiffValid = $derived(isValidIndivEntryDiff(currentIndivEntryDiff));
+
+	let newIndividualOriginalityCheck = $derived.by(() => {
+		if (!showNewIndividualNameField || participantType !== PARTICIPANT_TYPE.INDIVIDUAL) {
+			return { valid: true, error: null, conflictingName: null, similarityRatio: 0 };
+		}
+		const trimmedNew = newCustomParticipantName.trim();
+		if (!trimmedNew) {
+			return { valid: false, error: null, conflictingName: null, similarityRatio: 0 };
+		}
+		return validateParticipantNameOriginality(trimmedNew, getEffectiveSessionParticipants(), {
+			excludePlayerId: existingRegisteredIndividualMatch?.playerId ?? null,
+			includeRegisteredTeams: true
+		});
+	});
+
+	let newIndividualLabelError = $derived.by(() => {
+		if (
+			!showNewIndividualNameField ||
+			dialogMode !== 'register' ||
+			participantType !== PARTICIPANT_TYPE.INDIVIDUAL
+		) {
+			return null;
+		}
+		if (newIndividualNameError) {
+			return newIndividualNameError;
+		}
+		const trimmedNew = newCustomParticipantName.trim();
+		if (!trimmedNew) {
+			return null;
+		}
+		if (
+			trimmedNew.toLowerCase() === customParticipantName.trim().toLowerCase() ||
+			!isCurrentIndivDiffValid
+		) {
+			if (!newIndividualOriginalityCheck.valid) {
+				return newIndividualOriginalityCheck.error;
+			}
+			return 'Erro: o novo nome deve ser diferente do seu nome atual (chkIndivEntryDiff deve retornar ["id", "name"]).';
+		}
+		if (!newIndividualOriginalityCheck.valid) {
+			return newIndividualOriginalityCheck.error;
 		}
 		return null;
 	});
@@ -484,16 +549,29 @@
 		isAvulsoToggleRight = !isAvulsoToggleRight;
 		dialogServerError = '';
 		teamRegistrationError = '';
+		showNewIndividualNameField = false;
+		newCustomParticipantName = '';
+		newIndividualNameError = '';
 	}
 
 	function openIdentityModal(mode = 'register') {
 		dialogMode = mode;
 		dialogServerError = '';
 		teamRegistrationError = '';
+		showNewIndividualNameField = false;
+		newCustomParticipantName = '';
+		newIndividualNameError = '';
 		showIdentityDialog = true;
 
 		if (mode === 'register' && connectedParticipant && !isAvulsoToggleRight) {
 			validateSelectedTeamOnClientAndServer(selectedTeamId);
+		}
+	}
+
+	function handleConfirmButtonMouseOver() {
+		if (dialogMode !== 'register' || !isAvulsoToggleRight) return;
+		if (existingRegisteredIndividualMatch) {
+			showNewIndividualNameField = true;
 		}
 	}
 
@@ -503,27 +581,57 @@
 
 		dialogServerError = '';
 		teamRegistrationError = '';
+		newIndividualNameError = '';
 
 		const targetType = isAvulsoToggleRight
 			? PARTICIPANT_TYPE.INDIVIDUAL
 			: PARTICIPANT_TYPE.TEAM;
 		const chosenTeam = REGISTERED_TOURNAMENT_TEAMS.find((t) => t.id === selectedTeamId);
-		const candidateName =
-			targetType === PARTICIPANT_TYPE.TEAM
-				? (chosenTeam?.name ?? '')
-				: customParticipantName.trim();
+		const oldIndividualName = customParticipantName.trim();
 		const effectiveParticipants = getEffectiveSessionParticipants();
 
 		const cleanPassphrase = passphraseInput.trim();
 		const existingExactSameIndividual =
-			targetType === PARTICIPANT_TYPE.INDIVIDUAL
-				? snapshot.results.find(
-						(r) =>
-							r.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
-							typeof r.playerName === 'string' &&
-							r.playerName.trim().toLowerCase() === candidateName.toLowerCase()
-					)
-				: null;
+			targetType === PARTICIPANT_TYPE.INDIVIDUAL ? existingRegisteredIndividualMatch : null;
+
+		const isRenamingExistingIndividual = Boolean(
+			dialogMode === 'register' &&
+				targetType === PARTICIPANT_TYPE.INDIVIDUAL &&
+				existingExactSameIndividual
+		);
+
+		if (isRenamingExistingIndividual && !showNewIndividualNameField) {
+			showNewIndividualNameField = true;
+			newIndividualNameError =
+				'Este participante avulso já está cadastrado. Informe seu novo nome no campo ao lado.';
+			return;
+		}
+
+		const newIndividualName = newCustomParticipantName.trim();
+		let indivDiffResult = null;
+
+		if (isRenamingExistingIndividual) {
+			if (!newIndividualName) {
+				newIndividualNameError = 'Informe seu novo nome de participação avulsa no campo ao lado.';
+				return;
+			}
+			indivDiffResult = chkIndivEntryDiff(oldIndividualName, newIndividualName);
+			if (
+				newIndividualName.toLowerCase() === oldIndividualName.toLowerCase() ||
+				!isValidIndivEntryDiff(indivDiffResult)
+			) {
+				newIndividualNameError =
+					'Erro: o novo nome deve ser diferente do seu nome atual (chkIndivEntryDiff deve retornar ["id", "name"]).';
+				return;
+			}
+		}
+
+		const candidateName =
+			targetType === PARTICIPANT_TYPE.TEAM
+				? (chosenTeam?.name ?? '')
+				: isRenamingExistingIndividual
+					? newIndividualName
+					: oldIndividualName;
 
 		if (dialogMode === 'register') {
 			// Validação client-side prévia (Requisito F + validação de equipe já registrada / mesmo usuário conectado)
@@ -545,6 +653,10 @@
 					await validateSelectedTeamOnClientAndServer(selectedTeamId);
 					return;
 				}
+				if (isRenamingExistingIndividual && preCheck.field === 'participantName') {
+					newIndividualNameError = preCheck.error ?? ORIGINALITY_ERROR_MESSAGE;
+					return;
+				}
 				dialogServerError = preCheck.error ?? ORIGINALITY_ERROR_MESSAGE;
 				return;
 			}
@@ -558,16 +670,18 @@
 		dialogSubmitting = true;
 		try {
 			// Envia ao backend para criptografia AES-256-GCM + scrypt e validação server-side (Requisitos E e F)
-			const existingMatch = snapshot.results.find(
-				(r) =>
-					(targetType === PARTICIPANT_TYPE.TEAM &&
-						selectedTeamId &&
-						(r.teamId === selectedTeamId ||
-							r.playerId === selectedTeamId ||
-							r.playerId === `team_${selectedTeamId}`)) ||
-					(r.playerName &&
-						r.playerName.trim().toLowerCase() === candidateName.trim().toLowerCase())
-			);
+			const existingMatch = isRenamingExistingIndividual
+				? existingExactSameIndividual
+				: snapshot.results.find(
+						(r) =>
+							(targetType === PARTICIPANT_TYPE.TEAM &&
+								selectedTeamId &&
+								(r.teamId === selectedTeamId ||
+									r.playerId === selectedTeamId ||
+									r.playerId === `team_${selectedTeamId}`)) ||
+							(r.playerName &&
+								r.playerName.trim().toLowerCase() === candidateName.trim().toLowerCase())
+					);
 
 			const isSameAsConnected = Boolean(
 				connectedParticipant &&
@@ -621,6 +735,11 @@
 						dialogMode === 'reaccess'
 							? (existingMatch?.playerId ?? null)
 							: (existingExactSameIndividual?.playerId ?? null),
+					previousPlayerId: isRenamingExistingIndividual
+						? (existingExactSameIndividual?.playerId ?? null)
+						: null,
+					oldParticipantName: isRenamingExistingIndividual ? oldIndividualName : null,
+					newParticipantName: isRenamingExistingIndividual ? newIndividualName : null,
 					participantType: targetType,
 					participantName: candidateName,
 					selectedTeamId: targetType === PARTICIPANT_TYPE.TEAM ? selectedTeamId : null,
@@ -642,15 +761,26 @@
 					(payload?.field === 'selectedTeamId' || payload?.code === 'TEAM_ALREADY_REGISTERED')
 				) {
 					teamRegistrationError = payload?.error || TEAM_ALREADY_REGISTERED_ERROR_MESSAGE;
+				} else if (
+					isRenamingExistingIndividual &&
+					(payload?.field === 'newParticipantName' ||
+						payload?.field === 'participantName' ||
+						payload?.code === 'INVALID_INDIV_ENTRY_DIFF')
+				) {
+					newIndividualNameError = payload?.error || ORIGINALITY_ERROR_MESSAGE;
 				} else {
 					dialogServerError = payload?.error || ORIGINALITY_ERROR_MESSAGE;
 				}
 				return;
 			}
 
-			const targetExistingRecord = snapshot.results.find(
-				(r) => r.playerId === payload.playerId
-			);
+			const targetExistingRecord =
+				snapshot.results.find((r) => r.playerId === payload.playerId) ??
+				(isRenamingExistingIndividual
+					? snapshot.results.find(
+							(r) => r.playerId === existingExactSameIndividual?.playerId
+						)
+					: null);
 			const targetExistingBoard =
 				Array.isArray(targetExistingRecord?.selectedCardIds) &&
 				targetExistingRecord.selectedCardIds.length === PLAYER_BOARD_SIZE
@@ -698,7 +828,48 @@
 			});
 
 			// Sincroniza com a instância local/Firestore do cliente (inclusive em pré-lobby)
-			if (dialogMode === 'register' || !targetExistingRecord) {
+			// Para alteração de participante avulso existente (CHECKPOINT 4.3), só efetiva no banco
+			// se chkIndivEntryDiff(oldIndivName, newIndivName) retornar exclusivamente ['id', 'name'].
+			if (isRenamingExistingIndividual) {
+				const verifiedDiff = chkIndivEntryDiff(oldIndividualName, newIndividualName);
+				if (isValidIndivEntryDiff(verifiedDiff)) {
+					const oldPlayerIdInDb = snapshot.results.some(
+						(r) => r.playerId === existingExactSameIndividual?.playerId
+					)
+						? existingExactSameIndividual.playerId
+						: null;
+
+					if (oldPlayerIdInDb) {
+						await dbInstance.updatePlayerName({
+							playerId: oldPlayerIdInDb,
+							newPlayerId: payload.playerId,
+							playerName: payload.playerName,
+							participantType: PARTICIPANT_TYPE.INDIVIDUAL,
+							teamId: null,
+							credentials:
+								payload.credentials ??
+								targetExistingRecord?.credentials ??
+								existingMatch?.credentials ??
+								null
+						});
+					} else {
+						await dbInstance.initPlayer({
+							playerId: payload.playerId,
+							playerName: payload.playerName,
+							selectedCardIds: resolvedBoardIds,
+							participantType: payload.participantType,
+							teamId: payload.teamId,
+							markedCardIds: resolvedMarkedIds,
+							credentials:
+								payload.credentials ??
+								targetExistingRecord?.credentials ??
+								existingMatch?.credentials ??
+								null,
+							enforceOriginality: false
+						});
+					}
+				}
+			} else if (dialogMode === 'register' || !targetExistingRecord) {
 				await dbInstance.initPlayer({
 					playerId: payload.playerId,
 					playerName: payload.playerName,
@@ -713,6 +884,12 @@
 						null,
 					enforceOriginality: false
 				});
+			}
+
+			if (isRenamingExistingIndividual) {
+				customParticipantName = payload.playerName;
+				newCustomParticipantName = '';
+				showNewIndividualNameField = false;
 			}
 
 			showIdentityDialog = false;
@@ -1976,37 +2153,89 @@
 							{/if}
 						</div>
 					{:else}
-						<!-- MODO DIREITA: PARTICIPAÇÃO AVULSA COM VALIDAÇÃO DE 75% DE SEMELHANÇA VOCABULAR -->
-						<div class="field-group">
-							<label for="custom-participant-name">
-								Nome de Participação Avulsa (não pode conter 75% ou mais das palavras de outro participante):
-							</label>
-							<input
-								id="custom-participant-name"
-								type="text"
-								bind:value={customParticipantName}
-								oninput={() => (dialogServerError = '')}
-								disabled={Boolean(
-									connectedParticipant && nameIsLockedBySession && dialogMode === 'register'
-								)}
-								placeholder="Ex.: Piloto Fantasma da Colina"
-								required
-							/>
+						<!-- MODO DIREITA: PARTICIPAÇÃO AVULSA COM VALIDAÇÃO DE 75% DE SEMELHANÇA VOCABULAR E RENOMEAÇÃO (CHECKPOINT 4.3) -->
+						<div class="individual-name-fields-row">
+							<div class="field-group individual-name-col">
+								<label for="custom-participant-name">
+									Nome de Participação Avulsa (não pode conter 75% ou mais das palavras de outro participante):
+								</label>
+								<input
+									id="custom-participant-name"
+									type="text"
+									bind:value={customParticipantName}
+									oninput={() => {
+										dialogServerError = '';
+										newIndividualNameError = '';
+										if (!existingRegisteredIndividualMatch) {
+											showNewIndividualNameField = false;
+											newCustomParticipantName = '';
+										}
+									}}
+									disabled={Boolean(
+										connectedParticipant && nameIsLockedBySession && dialogMode === 'register'
+									)}
+									placeholder="Ex.: Piloto Fantasma da Colina"
+									required
+								/>
 
-							<!-- LABEL NA PARTE INFERIOR DO CAMPO DE PREENCHIMENTO DE NOME (REQUISITO F) -->
-							{#if originalityLabelError}
-								<label
-									for="custom-participant-name"
-									class="originality-error-label"
-									role="alert"
-								>
-									{originalityLabelError}
-								</label>
-							{:else if customParticipantName.trim().length > 0 && dialogMode === 'register'}
-								<label for="custom-participant-name" class="originality-ok-label">
-									✓ Nome de participação disponível e dentro dos critérios de originalidade (semelhança máxima:
-									{Math.round((clientOriginalityCheck.similarityRatio ?? 0) * 100)}%).
-								</label>
+								<!-- LABEL NA PARTE INFERIOR DO CAMPO DE PREENCHIMENTO DE NOME (REQUISITO F) -->
+								{#if originalityLabelError}
+									<label
+										for="custom-participant-name"
+										class="originality-error-label"
+										role="alert"
+									>
+										{originalityLabelError}
+									</label>
+								{:else if customParticipantName.trim().length > 0 && dialogMode === 'register'}
+									{#if existingRegisteredIndividualMatch && showNewIndividualNameField}
+										<label for="custom-participant-name" class="originality-ok-label">
+											ℹ️ Participante avulso já cadastrado identificado. Informe seu novo nome no campo ao lado.
+										</label>
+									{:else}
+										<label for="custom-participant-name" class="originality-ok-label">
+											✓ Nome de participação disponível e dentro dos critérios de originalidade (semelhança máxima:
+											{Math.round((clientOriginalityCheck.similarityRatio ?? 0) * 100)}%).
+										</label>
+									{/if}
+								{/if}
+							</div>
+
+							{#if showNewIndividualNameField && dialogMode === 'register'}
+								<div class="field-group individual-name-col">
+									<label for="new-custom-participant-name">
+										Novo Nome de Participação Avulsa (deve ser diferente do seu atual):
+									</label>
+									<input
+										id="new-custom-participant-name"
+										type="text"
+										bind:value={newCustomParticipantName}
+										oninput={() => {
+											newIndividualNameError = '';
+											dialogServerError = '';
+										}}
+										disabled={Boolean(
+											connectedParticipant && nameIsLockedBySession && dialogMode === 'register'
+										)}
+										placeholder="Digite seu novo nome avulso"
+										required
+									/>
+
+									{#if newIndividualLabelError}
+										<label
+											for="new-custom-participant-name"
+											class="originality-error-label"
+											role="alert"
+										>
+											{newIndividualLabelError}
+										</label>
+									{:else if newCustomParticipantName.trim().length > 0}
+										<label for="new-custom-participant-name" class="originality-ok-label">
+											✓ Novo nome válido (chkIndivEntryDiff: ['{currentIndivEntryDiff.join("', '")}'] • semelhança máxima:
+											{Math.round((newIndividualOriginalityCheck.similarityRatio ?? 0) * 100)}%).
+										</label>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					{/if}
@@ -2047,9 +2276,12 @@
 						<button
 							type="submit"
 							class="btn btn-primary"
+							onmouseover={handleConfirmButtonMouseOver}
+							onfocus={handleConfirmButtonMouseOver}
 							disabled={dialogSubmitting ||
 								(dialogMode === 'register' &&
 									isAvulsoToggleRight &&
+									!showNewIndividualNameField &&
 									!clientOriginalityCheck.valid)}
 						>
 							{#if dialogSubmitting}
@@ -3080,6 +3312,20 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
+	}
+
+	.individual-name-fields-row {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 0.85rem;
+		width: 100%;
+	}
+
+	.individual-name-col {
+		flex: 1 1 0%;
+		min-width: 0;
+		justify-content: space-between;
 	}
 
 	.field-group label {

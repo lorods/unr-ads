@@ -11,7 +11,9 @@ import {
 } from '$lib/db/bingoDatabase.js';
 import { generateValidCardSelection, validateCardSelection } from '$lib/db/cardingSeed.js';
 import {
+	chkIndivEntryDiff,
 	isParticipantNameLocked,
+	isValidIndivEntryDiff,
 	validateParticipantNameOriginality,
 	validateParticipantRegistration,
 	validateTournamentTeamAvailability
@@ -185,22 +187,66 @@ export async function POST({ request }) {
 				? PARTICIPANT_TYPE.TEAM
 				: PARTICIPANT_TYPE.INDIVIDUAL;
 
-		const candidatePlayerId = deriveParticipantId({
-			participantName: body?.participantName ?? '',
-			participantType,
-			teamId: body?.selectedTeamId ?? null
-		});
+		const oldIndivName =
+			participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+			typeof body?.oldParticipantName === 'string'
+				? body.oldParticipantName.trim()
+				: '';
+		const newIndivName =
+			participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+			typeof body?.newParticipantName === 'string'
+				? body.newParticipantName.trim()
+				: '';
+		const isRenamingExistingIndividual = Boolean(
+			participantType === PARTICIPANT_TYPE.INDIVIDUAL && oldIndivName
+		);
+
+		let existingIndividualToRename = null;
+		let indivEntryDiff = null;
+
+		if (isRenamingExistingIndividual) {
+			existingIndividualToRename =
+				mergedParticipants.find(
+					(p) =>
+						p?.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+						((body?.previousPlayerId && p.playerId === body.previousPlayerId) ||
+							(body?.playerId && p.playerId === body.playerId) ||
+							(typeof p?.playerName === 'string' &&
+								p.playerName.trim().toLowerCase() === oldIndivName.toLowerCase()))
+				) ?? null;
+
+			indivEntryDiff = chkIndivEntryDiff(oldIndivName, newIndivName);
+			if (!isValidIndivEntryDiff(indivEntryDiff)) {
+				return json(
+					{
+						ok: false,
+						field: 'newParticipantName',
+						code: 'INVALID_INDIV_ENTRY_DIFF',
+						entryDiff: indivEntryDiff,
+						error:
+							'O novo nome de participação avulsa deve ser diferente do atual (chkIndivEntryDiff deve retornar apenas ["id", "name"]).'
+					},
+					{ status: 422 }
+				);
+			}
+		}
+
+		const targetParticipantName = isRenamingExistingIndividual
+			? newIndivName
+			: (body?.participantName ?? '');
 
 		const registrationValidation = validateParticipantRegistration({
 			participantType,
-			participantName: body?.participantName ?? '',
+			participantName: targetParticipantName,
 			selectedTeamId: body?.selectedTeamId ?? '',
 			selectedTeam: body?.selectedTeam ?? null,
 			passphrase: body?.passphrase ?? '',
 			sessionStatus: effectiveStatus,
 			existingParticipants: mergedParticipants,
 			excludePlayerId:
-				participantType === PARTICIPANT_TYPE.INDIVIDUAL ? (body?.playerId ?? null) : null
+				participantType === PARTICIPANT_TYPE.INDIVIDUAL
+					? (existingIndividualToRename?.playerId ?? body?.playerId ?? null)
+					: null
 		});
 
 		if (!registrationValidation.valid) {
@@ -225,7 +271,10 @@ export async function POST({ request }) {
 			teamId: resolvedTeamId
 		});
 
-		const existingPlayer = mergedParticipants.find((p) => p?.playerId === finalPlayerId);
+		const existingPlayer =
+			existingIndividualToRename ??
+			mergedParticipants.find((p) => p?.playerId === finalPlayerId);
+
 		if (existingPlayer?.credentials) {
 			const passOk = verifyEncryptedParticipantCredentials(
 				body?.passphrase ?? '',
@@ -287,16 +336,35 @@ export async function POST({ request }) {
 					: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
 
 		try {
-			const initialized = await db.initPlayer({
-				playerId: finalPlayerId,
-				playerName: resolvedName,
-				selectedCardIds,
-				participantType,
-				teamId: resolvedTeamId,
-				markedCardIds: existingPlayer?.markedCardIds ?? [],
-				credentials,
-				enforceOriginality: participantType === PARTICIPANT_TYPE.INDIVIDUAL
-			});
+			let initialized;
+			const oldIdInServerDb =
+				existingIndividualToRename?.playerId &&
+				snapshot.results.some((r) => r.playerId === existingIndividualToRename.playerId)
+					? existingIndividualToRename.playerId
+					: null;
+
+			if (isRenamingExistingIndividual && oldIdInServerDb) {
+				const updatedResult = await db.updatePlayerName({
+					playerId: oldIdInServerDb,
+					newPlayerId: finalPlayerId,
+					playerName: resolvedName,
+					participantType,
+					teamId: null,
+					credentials
+				});
+				initialized = { result: updatedResult, score: null };
+			} else {
+				initialized = await db.initPlayer({
+					playerId: finalPlayerId,
+					playerName: resolvedName,
+					selectedCardIds,
+					participantType,
+					teamId: resolvedTeamId,
+					markedCardIds: existingPlayer?.markedCardIds ?? [],
+					credentials,
+					enforceOriginality: participantType === PARTICIPANT_TYPE.INDIVIDUAL
+				});
+			}
 
 			const authToken = issueParticipantAuthToken({
 				sessionId,
@@ -311,6 +379,8 @@ export async function POST({ request }) {
 				ok: true,
 				sessionId,
 				playerId: finalPlayerId,
+				previousPlayerId: existingIndividualToRename?.playerId ?? null,
+				entryDiff: indivEntryDiff,
 				playerName: resolvedName,
 				participantType,
 				teamId: resolvedTeamId,

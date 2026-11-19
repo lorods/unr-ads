@@ -24,7 +24,9 @@ import {
 	PARTICIPANT_TYPE,
 	PARTICIPATION_CREDIT_DISCLAIMER,
 	TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
+	chkIndivEntryDiff,
 	isParticipantNameLocked,
+	isValidIndivEntryDiff,
 	validateParticipantNameOriginality,
 	validateTournamentTeamAvailability
 } from './participantValidation.js';
@@ -37,7 +39,9 @@ export {
 	PARTICIPATION_CREDIT_DISCLAIMER,
 	PLAYER_BOARD_SIZE,
 	REGISTERED_TOURNAMENT_TEAMS,
-	TEAM_ALREADY_REGISTERED_ERROR_MESSAGE
+	TEAM_ALREADY_REGISTERED_ERROR_MESSAGE,
+	chkIndivEntryDiff,
+	isValidIndivEntryDiff
 };
 
 export const BINGO_COLLECTION = 'bingo';
@@ -1197,8 +1201,23 @@ export class BingoDatabase {
 	 * @param {string | null} [params.teamId]
 	 * @param {object | null} [params.credentials]
 	 */
+	/**
+	 * Atualiza o nome de participação do jogador antes de a sessão atingir o estado `'live'`.
+	 * Caso a sessão já esteja em `'live'` ou `'finished'`, lança erro (CHECKPOINT 4f).
+	 * Para participantes individuais (CHECKPOINT 4.3), efetiva a alteração somente se
+	 * `chkIndivEntryDiff(oldIndivName, newIndivName)` retornar exclusivamente `'id'` e `'name'`.
+	 *
+	 * @param {object} params
+	 * @param {string} params.playerId
+	 * @param {string | null} [params.newPlayerId=null]
+	 * @param {string} params.playerName
+	 * @param {'team' | 'individual'} [params.participantType]
+	 * @param {string | null} [params.teamId]
+	 * @param {object | null} [params.credentials]
+	 */
 	async updatePlayerName({
 		playerId,
+		newPlayerId = null,
 		playerName,
 		participantType,
 		teamId = null,
@@ -1208,6 +1227,11 @@ export class BingoDatabase {
 		if (!cleanName) {
 			throw new Error('Informe um nome de participação válido.');
 		}
+
+		const targetPlayerId =
+			typeof newPlayerId === 'string' && newPlayerId.trim()
+				? newPlayerId.trim()
+				: playerId;
 
 		if (this.useLocalFallback) {
 			const store = getOrCreateLocalSessionStore(this.sessionId);
@@ -1234,6 +1258,13 @@ export class BingoDatabase {
 					);
 				}
 			} else if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+				const diffKeys = chkIndivEntryDiff(existing.playerName, cleanName);
+				if (!isValidIndivEntryDiff(diffKeys)) {
+					throw new Error(
+						'O novo nome de participação avulsa deve ser diferente do atual (diferença exclusiva em id e name).'
+					);
+				}
+
 				const originality = validateParticipantNameOriginality(
 					cleanName,
 					Array.from(store.results.values()),
@@ -1247,18 +1278,27 @@ export class BingoDatabase {
 			const nowIso = new Date().toISOString();
 			const updatedResult = {
 				...existing,
+				playerId: targetPlayerId,
 				playerName: cleanName,
 				participantType: nextType,
 				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
 				credentials: credentials ?? existing.credentials ?? null,
 				updatedAt: nowIso
 			};
-			store.results.set(playerId, updatedResult);
+
+			if (targetPlayerId !== playerId) {
+				store.results.delete(playerId);
+			}
+			store.results.set(targetPlayerId, updatedResult);
 
 			const existingScore = store.scores.get(playerId);
 			if (existingScore) {
-				store.scores.set(playerId, {
+				if (targetPlayerId !== playerId) {
+					store.scores.delete(playerId);
+				}
+				store.scores.set(targetPlayerId, {
 					...existingScore,
+					playerId: targetPlayerId,
 					playerName: cleanName,
 					participantType: nextType,
 					teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
@@ -1270,9 +1310,10 @@ export class BingoDatabase {
 			return updatedResult;
 		}
 
-		const [sessionSnap, resultsSnap] = await Promise.all([
+		const [sessionSnap, resultsSnap, oldScoreSnap] = await Promise.all([
 			getDoc(this.sessionRef),
-			getDocs(this.resultsColRef)
+			getDocs(this.resultsColRef),
+			getDoc(this.scoreDocRef(playerId))
 		]);
 
 		const status = sessionSnap.exists() ? sessionSnap.data().status : null;
@@ -1300,6 +1341,13 @@ export class BingoDatabase {
 				);
 			}
 		} else if (nextType === PARTICIPANT_TYPE.INDIVIDUAL) {
+			const diffKeys = chkIndivEntryDiff(existing.playerName, cleanName);
+			if (!isValidIndivEntryDiff(diffKeys)) {
+				throw new Error(
+					'O novo nome de participação avulsa deve ser diferente do atual (diferença exclusiva em id e name).'
+				);
+			}
+
 			const originality = validateParticipantNameOriginality(cleanName, allResults, {
 				excludePlayerId: playerId,
 				includeRegisteredTeams: true
@@ -1312,24 +1360,54 @@ export class BingoDatabase {
 		const timestamp = serverTimestamp();
 		const batch = writeBatch(this.db);
 
-		batch.update(this.resultDocRef(playerId), {
-			playerName: cleanName,
-			participantType: nextType,
-			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
-			...(credentials ? { credentials } : {}),
-			updatedAt: timestamp
-		});
+		if (targetPlayerId !== playerId) {
+			batch.delete(this.resultDocRef(playerId));
+			batch.set(this.resultDocRef(targetPlayerId), {
+				...existing,
+				playerId: targetPlayerId,
+				playerName: cleanName,
+				participantType: nextType,
+				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+				...(credentials ? { credentials } : {}),
+				updatedAt: timestamp
+			});
 
-		batch.update(this.scoreDocRef(playerId), {
-			playerName: cleanName,
-			participantType: nextType,
-			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
-			updatedAt: timestamp
-		});
+			const existingScoreData = oldScoreSnap.exists()
+				? oldScoreSnap.data()
+				: {
+						eventsMatchedSoFar: 0,
+						matchedCardIds: []
+					};
+			batch.delete(this.scoreDocRef(playerId));
+			batch.set(this.scoreDocRef(targetPlayerId), {
+				...existingScoreData,
+				playerId: targetPlayerId,
+				playerName: cleanName,
+				participantType: nextType,
+				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+				updatedAt: timestamp
+			});
+		} else {
+			batch.update(this.resultDocRef(playerId), {
+				playerName: cleanName,
+				participantType: nextType,
+				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+				...(credentials ? { credentials } : {}),
+				updatedAt: timestamp
+			});
+
+			batch.update(this.scoreDocRef(playerId), {
+				playerName: cleanName,
+				participantType: nextType,
+				teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null,
+				updatedAt: timestamp
+			});
+		}
 
 		await batch.commit();
 		return {
 			...existing,
+			playerId: targetPlayerId,
 			playerName: cleanName,
 			participantType: nextType,
 			teamId: nextType === PARTICIPANT_TYPE.TEAM ? teamId : null
