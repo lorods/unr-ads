@@ -1033,13 +1033,27 @@
 	}
 
 	.alert {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		width: 100%;
+		margin: 0;
+		box-sizing: border-box;
+		z-index: 2000;
+		backdrop-filter: blur(50px);
 		display: flex;
-		justify-content: space-between;
+		justify-content: center;
+		gap: 0.5vw;
 		align-items: center;
 		padding: 0.85rem 1.25rem;
 		border-radius: 10px;
 		font-size: 0.9rem;
 		font-weight: 500;
+	}
+
+	.alert > span {
+		text-align: center;
 	}
 
 	.alert-info {
