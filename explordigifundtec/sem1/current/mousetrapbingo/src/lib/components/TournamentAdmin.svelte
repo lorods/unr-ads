@@ -1046,7 +1046,7 @@
 		justify-content: center;
 		gap: 0.5vw;
 		align-items: center;
-		padding: 0.85rem 1.25rem;
+		padding: 0.85rem 1.25rem 1.2rem;
 		border-radius: 10px;
 		font-size: 0.9rem;
 		font-weight: 500;
@@ -1075,12 +1075,35 @@
 	}
 
 	.alert-close {
-		background: transparent;
-		border: none;
+		position: absolute;
+		bottom: 0;
+		left: 50%;
+		transform: translate(-50%, 50%);
+		width: 28px;
+		height: 28px;
+		border-radius: 999px;
+		background: #0f172a;
+		border: 2px solid #64748b;
 		color: inherit;
+		font-size: 0.88rem;
+		font-weight: 800;
+		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
 		cursor: pointer;
-		font-size: 1rem;
-		padding: 0.25rem;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+		transition:
+			background-color 0.15s ease,
+			border-color 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.alert-close:hover {
+		background: #1e293b;
+		border-color: #94a3b8;
+		transform: translate(-50%, 50%) scale(1.08);
 	}
 
 	.bingo-banner {
