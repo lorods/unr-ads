@@ -64,9 +64,12 @@
 	let teamRegistrationError = $state('');
 	let dialogSubmitting = $state(false);
 
-	// Seleção de cartas para montagem da cartela (10 cartas)
+	// Seleção de cartas para montagem da cartela (10 cartas) e marcações manuais em tempo real
 	let draftSelectedCardIds = $state(generateValidCardSelection(PLAYER_BOARD_SIZE));
+	let draftMarkedCardIds = $state([]);
 	let boardFilterMode = $state('all'); // 'all' | 'chosen' | 'unselected' | 'marked_occurred' | 'unmarked_occurred'
+	let lastSyncedPlayerId = null;
+	let lastSyncedBoardSignature = '';
 
 	// Histórico de sessões anteriores (Requisito E)
 	let previousSessions = $state([]);
@@ -148,8 +151,14 @@
 		if (!trimmed) {
 			return { valid: false, error: null, conflictingName: null, similarityRatio: 0 };
 		}
-		return validateParticipantNameOriginality(trimmed, snapshot.results, {
-			excludePlayerId: connectedParticipant?.playerId ?? null,
+		const existingExactSameIndividual = snapshot.results.find(
+			(r) =>
+				r.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+				typeof r.playerName === 'string' &&
+				r.playerName.trim().toLowerCase() === trimmed.toLowerCase()
+		);
+		return validateParticipantNameOriginality(trimmed, getEffectiveSessionParticipants(), {
+			excludePlayerId: existingExactSameIndividual?.playerId ?? null,
 			includeRegisteredTeams: true
 		});
 	});
@@ -188,13 +197,21 @@
 		const hasRecord = Boolean(currentPlayerRecord);
 
 		let selectedIds = draftSelectedCardIds;
-		if (hasRecord && Array.isArray(currentPlayerRecord.cardStates)) {
+		if (
+			nameIsLockedBySession &&
+			hasRecord &&
+			Array.isArray(currentPlayerRecord.cardStates)
+		) {
 			const extracted = extractBoardSelectionFromStates(currentPlayerRecord.cardStates);
 			selectedIds = extracted.selectedCardIds;
 		}
 
 		const selectedSet = new Set(selectedIds);
-		const markedSet = new Set(currentPlayerRecord?.markedCardIds ?? []);
+		const rawMarkedIds =
+			!nameIsLockedBySession || !hasRecord
+				? draftMarkedCardIds
+				: (currentPlayerRecord?.markedCardIds ?? draftMarkedCardIds);
+		const markedSet = new Set(rawMarkedIds.filter((id) => selectedSet.has(id)));
 
 		const allCards = snapshot.cards.map((card) => {
 			const isSelected = selectedSet.has(card.id);
@@ -314,6 +331,9 @@
 			unsubscribeSnapshot = null;
 		}
 
+		lastSyncedPlayerId = null;
+		lastSyncedBoardSignature = '';
+
 		const cleanSessionId = (sessionId || DEFAULT_SESSION_ID).trim() || DEFAULT_SESSION_ID;
 		restoreConnectedParticipant(cleanSessionId);
 
@@ -326,15 +346,36 @@
 			(nextSnap) => {
 				snapshot = nextSnap;
 				if (connectedParticipant?.playerId) {
-					const found = nextSnap.results.find(
-						(r) => r.playerId === connectedParticipant.playerId
-					);
+					const activeId = connectedParticipant.playerId;
+					const found = nextSnap.results.find((r) => r.playerId === activeId);
 					if (found && Array.isArray(found.cardStates)) {
 						const { selectedCardIds } = extractBoardSelectionFromStates(found.cardStates);
-						if (selectedCardIds.length === PLAYER_BOARD_SIZE) {
-							draftSelectedCardIds = selectedCardIds;
+						const incomingSignature = selectedCardIds.join(',');
+						const isPlayerSwitch = lastSyncedPlayerId !== activeId;
+						const isExternalBoardUpdate =
+							incomingSignature !== lastSyncedBoardSignature &&
+							draftSelectedCardIds.length === PLAYER_BOARD_SIZE;
+						const sessionLocked = isParticipantNameLocked(
+							normalizeSessionStatus(nextSnap.session?.status)
+						);
+
+						if (
+							selectedCardIds.length === PLAYER_BOARD_SIZE &&
+							(isPlayerSwitch || isExternalBoardUpdate || sessionLocked)
+						) {
+							draftSelectedCardIds = [...selectedCardIds];
+							lastSyncedBoardSignature = incomingSignature;
 						}
+						if (isPlayerSwitch || Array.isArray(found.markedCardIds)) {
+							draftMarkedCardIds = Array.isArray(found.markedCardIds)
+								? [...found.markedCardIds]
+								: [];
+						}
+						lastSyncedPlayerId = activeId;
 					}
+				} else {
+					lastSyncedPlayerId = null;
+					lastSyncedBoardSignature = '';
 				}
 				refreshPreviousSessionsHistory();
 			},
@@ -474,6 +515,15 @@
 		const effectiveParticipants = getEffectiveSessionParticipants();
 
 		const cleanPassphrase = passphraseInput.trim();
+		const existingExactSameIndividual =
+			targetType === PARTICIPANT_TYPE.INDIVIDUAL
+				? snapshot.results.find(
+						(r) =>
+							r.participantType === PARTICIPANT_TYPE.INDIVIDUAL &&
+							typeof r.playerName === 'string' &&
+							r.playerName.trim().toLowerCase() === candidateName.toLowerCase()
+					)
+				: null;
 
 		if (dialogMode === 'register') {
 			// Validação client-side prévia (Requisito F + validação de equipe já registrada / mesmo usuário conectado)
@@ -485,10 +535,7 @@
 				passphrase: cleanPassphrase,
 				sessionStatus: currentSessionStatus,
 				existingParticipants: effectiveParticipants,
-				excludePlayerId:
-					targetType === PARTICIPANT_TYPE.INDIVIDUAL
-						? (connectedParticipant?.playerId ?? null)
-						: null
+				excludePlayerId: existingExactSameIndividual?.playerId ?? null
 			});
 
 			if (!preCheck.valid) {
@@ -522,6 +569,47 @@
 						r.playerName.trim().toLowerCase() === candidateName.trim().toLowerCase())
 			);
 
+			const isSameAsConnected = Boolean(
+				connectedParticipant &&
+					((existingMatch && existingMatch.playerId === connectedParticipant.playerId) ||
+						(targetType === PARTICIPANT_TYPE.TEAM &&
+							connectedParticipant.teamId &&
+							connectedParticipant.teamId === selectedTeamId) ||
+						(connectedParticipant.playerName &&
+							connectedParticipant.playerName.trim().toLowerCase() ===
+								candidateName.trim().toLowerCase()))
+			);
+			const isSwitchingToAnotherParticipant = Boolean(
+				connectedParticipant && !isSameAsConnected
+			);
+
+			const existingMatchBoard =
+				Array.isArray(existingMatch?.selectedCardIds) &&
+				existingMatch.selectedCardIds.length === PLAYER_BOARD_SIZE
+					? existingMatch.selectedCardIds
+					: Array.isArray(existingMatch?.cardStates)
+						? extractBoardSelectionFromStates(existingMatch.cardStates).selectedCardIds
+						: [];
+
+			const isCurrentDraftCompleteAndValid =
+				draftSelectedCardIds.length === PLAYER_BOARD_SIZE &&
+				validateCardSelection(draftSelectedCardIds, snapshot.cards).valid;
+
+			const initialBoardForTarget =
+				existingMatchBoard.length === PLAYER_BOARD_SIZE
+					? existingMatchBoard
+					: isSwitchingToAnotherParticipant
+						? generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards)
+						: isCurrentDraftCompleteAndValid
+							? [...draftSelectedCardIds]
+							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+
+			const initialMarkedForTarget = Array.isArray(existingMatch?.markedCardIds)
+				? [...existingMatch.markedCardIds]
+				: isSwitchingToAnotherParticipant
+					? []
+					: draftMarkedCardIds.filter((id) => initialBoardForTarget.includes(id));
+
 			const response = await fetch('/api/bingo/participant', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -529,17 +617,17 @@
 					action: dialogMode === 'reaccess' ? 'reaccess' : 'register',
 					sessionId: snapshot.sessionId,
 					sessionStatus: currentSessionStatus,
-					playerId: dialogMode === 'reaccess' ? (existingMatch?.playerId ?? null) : null,
+					playerId:
+						dialogMode === 'reaccess'
+							? (existingMatch?.playerId ?? null)
+							: (existingExactSameIndividual?.playerId ?? null),
 					participantType: targetType,
 					participantName: candidateName,
 					selectedTeamId: targetType === PARTICIPANT_TYPE.TEAM ? selectedTeamId : null,
 					selectedTeam:
 						targetType === PARTICIPANT_TYPE.TEAM && chosenTeam ? { ...chosenTeam } : null,
 					passphrase: cleanPassphrase,
-					selectedCardIds:
-						draftSelectedCardIds.length === PLAYER_BOARD_SIZE
-							? draftSelectedCardIds
-							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards),
+					selectedCardIds: initialBoardForTarget,
 					existingParticipants: effectiveParticipants,
 					storedCredentials:
 						dialogMode === 'reaccess' ? (existingMatch?.credentials ?? null) : null
@@ -560,30 +648,41 @@
 				return;
 			}
 
-			// Sincroniza com a instância local/Firestore do cliente para reatividade imediata entre abas
-			if (dialogMode === 'register' && snapshot.initialized) {
-				const targetExistingRecord = snapshot.results.find(
-					(r) => r.playerId === payload.playerId
-				);
-				const boardToSave =
-					Array.isArray(targetExistingRecord?.selectedCardIds) &&
-					targetExistingRecord.selectedCardIds.length === PLAYER_BOARD_SIZE
-						? targetExistingRecord.selectedCardIds
-						: draftSelectedCardIds.length === PLAYER_BOARD_SIZE
-							? draftSelectedCardIds
-							: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+			const targetExistingRecord = snapshot.results.find(
+				(r) => r.playerId === payload.playerId
+			);
+			const targetExistingBoard =
+				Array.isArray(targetExistingRecord?.selectedCardIds) &&
+				targetExistingRecord.selectedCardIds.length === PLAYER_BOARD_SIZE
+					? targetExistingRecord.selectedCardIds
+					: Array.isArray(targetExistingRecord?.cardStates)
+						? extractBoardSelectionFromStates(targetExistingRecord.cardStates).selectedCardIds
+						: [];
 
-				await dbInstance.initPlayer({
-					playerId: payload.playerId,
-					playerName: payload.playerName,
-					selectedCardIds: boardToSave,
-					participantType: payload.participantType,
-					teamId: payload.teamId,
-					markedCardIds: targetExistingRecord?.markedCardIds ?? [],
-					credentials: payload.credentials,
-					enforceOriginality: payload.participantType === PARTICIPANT_TYPE.INDIVIDUAL
-				});
-			}
+			const resolvedBoardIds =
+				targetExistingBoard.length === PLAYER_BOARD_SIZE
+					? [...targetExistingBoard]
+					: Array.isArray(payload.boardView?.selectedCardIds) &&
+						  payload.boardView.selectedCardIds.length === PLAYER_BOARD_SIZE
+						? [...payload.boardView.selectedCardIds]
+						: Array.isArray(payload.result?.selectedCardIds) &&
+							  payload.result.selectedCardIds.length === PLAYER_BOARD_SIZE
+							? [...payload.result.selectedCardIds]
+							: [...initialBoardForTarget];
+
+			const resolvedMarkedIds = Array.isArray(targetExistingRecord?.markedCardIds)
+				? [...targetExistingRecord.markedCardIds]
+				: Array.isArray(payload.boardView?.markedCardIds)
+					? [...payload.boardView.markedCardIds]
+					: Array.isArray(payload.result?.markedCardIds)
+						? [...payload.result.markedCardIds]
+						: [...initialMarkedForTarget];
+
+			// Atualiza o participante conectado e as listas reativas ANTES de emitir no dbInstance
+			lastSyncedPlayerId = payload.playerId;
+			lastSyncedBoardSignature = resolvedBoardIds.join(',');
+			draftSelectedCardIds = [...resolvedBoardIds];
+			draftMarkedCardIds = [...resolvedMarkedIds];
 
 			persistConnectedParticipant(snapshot.sessionId, {
 				playerId: payload.playerId,
@@ -591,8 +690,30 @@
 				participantType: payload.participantType,
 				teamId: payload.teamId,
 				authToken: payload.authToken,
-				credentials: payload.credentials ?? existingMatch?.credentials ?? null
+				credentials:
+					payload.credentials ??
+					targetExistingRecord?.credentials ??
+					existingMatch?.credentials ??
+					null
 			});
+
+			// Sincroniza com a instância local/Firestore do cliente (inclusive em pré-lobby)
+			if (dialogMode === 'register' || !targetExistingRecord) {
+				await dbInstance.initPlayer({
+					playerId: payload.playerId,
+					playerName: payload.playerName,
+					selectedCardIds: resolvedBoardIds,
+					participantType: payload.participantType,
+					teamId: payload.teamId,
+					markedCardIds: resolvedMarkedIds,
+					credentials:
+						payload.credentials ??
+						targetExistingRecord?.credentials ??
+						existingMatch?.credentials ??
+						null,
+					enforceOriginality: false
+				});
+			}
 
 			showIdentityDialog = false;
 			passphraseInput = '';
@@ -609,6 +730,53 @@
 		}
 	}
 
+	async function syncDraftBoardToDatabaseIfComplete(
+		cardsToSync = draftSelectedCardIds,
+		marksToSync = draftMarkedCardIds
+	) {
+		if (!dbInstance || !connectedParticipant || nameIsLockedBySession) return;
+		if (!Array.isArray(cardsToSync) || cardsToSync.length !== PLAYER_BOARD_SIZE) return;
+		const validation = validateCardSelection(cardsToSync, snapshot.cards);
+		if (!validation.valid) return;
+
+		const sortedCards = [...cardsToSync].sort((a, b) => a - b);
+		const sortedMarks = Array.from(
+			new Set((marksToSync ?? []).filter((id) => sortedCards.includes(id)))
+		).sort((a, b) => a - b);
+
+		lastSyncedPlayerId = connectedParticipant.playerId;
+		lastSyncedBoardSignature = sortedCards.join(',');
+
+		try {
+			await dbInstance.initPlayer({
+				playerId: connectedParticipant.playerId,
+				playerName: connectedParticipant.playerName,
+				selectedCardIds: sortedCards,
+				participantType: connectedParticipant.participantType,
+				teamId: connectedParticipant.teamId,
+				markedCardIds: sortedMarks,
+				credentials:
+					connectedParticipant.credentials ?? currentPlayerRecord?.credentials ?? null,
+				enforceOriginality: false
+			});
+
+			fetch('/api/bingo/participant', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'update_board',
+					sessionId: snapshot.sessionId,
+					playerId: connectedParticipant.playerId,
+					authToken: connectedParticipant.authToken,
+					selectedCardIds: sortedCards,
+					existingParticipants: snapshot.results
+				})
+			}).catch(() => {});
+		} catch {
+			// Mantém o estado local caso a persistência automática falhe
+		}
+	}
+
 	function handleToggleDraftCard(cardId) {
 		if (nameIsLockedBySession) {
 			showFeedback(
@@ -619,8 +787,10 @@
 		}
 
 		const nextSet = new Set(draftSelectedCardIds);
+		let wasRemoved = false;
 		if (nextSet.has(cardId)) {
 			nextSet.delete(cardId);
+			wasRemoved = true;
 		} else {
 			if (nextSet.size >= PLAYER_BOARD_SIZE) {
 				showFeedback(
@@ -631,25 +801,44 @@
 			}
 			nextSet.add(cardId);
 		}
-		draftSelectedCardIds = Array.from(nextSet).sort((a, b) => a - b);
+
+		const nextSelected = Array.from(nextSet).sort((a, b) => a - b);
+		draftSelectedCardIds = nextSelected;
+
+		if (wasRemoved && draftMarkedCardIds.includes(cardId)) {
+			const nextMarked = draftMarkedCardIds.filter((id) => id !== cardId);
+			draftMarkedCardIds = nextMarked;
+			if (dbInstance && connectedParticipant && currentPlayerRecord) {
+				dbInstance
+					.updatePlayerMarkedCards({
+						playerId: connectedParticipant.playerId,
+						markedCardIds: nextMarked
+					})
+					.catch(() => {});
+			}
+		}
+
+		if (nextSelected.length === PLAYER_BOARD_SIZE && connectedParticipant) {
+			syncDraftBoardToDatabaseIfComplete(nextSelected, draftMarkedCardIds);
+		}
 	}
 
 	function handleRandomizeDraftBoard() {
 		if (nameIsLockedBySession) return;
-		draftSelectedCardIds = generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+		const nextSelected = generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+		const nextMarked = draftMarkedCardIds.filter((id) => nextSelected.includes(id));
+		draftSelectedCardIds = nextSelected;
+		draftMarkedCardIds = nextMarked;
+
+		if (connectedParticipant) {
+			syncDraftBoardToDatabaseIfComplete(nextSelected, nextMarked);
+		}
 	}
 
 	async function handleSaveMountedBoard() {
 		if (!dbInstance) return;
 		if (!connectedParticipant) {
 			openIdentityModal('register');
-			return;
-		}
-		if (!snapshot.initialized) {
-			showFeedback(
-				'Aguarde a criação da sessão pelo administrador para gravar sua cartela no banco.',
-				'info'
-			);
 			return;
 		}
 		if (nameIsLockedBySession) {
@@ -666,6 +855,11 @@
 
 		busyAction = 'save_board';
 		try {
+			const sortedCards = [...draftSelectedCardIds].sort((a, b) => a - b);
+			const sortedMarks = draftMarkedCardIds.filter((id) => sortedCards.includes(id));
+			lastSyncedPlayerId = connectedParticipant.playerId;
+			lastSyncedBoardSignature = sortedCards.join(',');
+
 			await fetch('/api/bingo/participant', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -674,7 +868,7 @@
 					sessionId: snapshot.sessionId,
 					playerId: connectedParticipant.playerId,
 					authToken: connectedParticipant.authToken,
-					selectedCardIds: draftSelectedCardIds,
+					selectedCardIds: sortedCards,
 					existingParticipants: snapshot.results
 				})
 			});
@@ -682,11 +876,12 @@
 			await dbInstance.initPlayer({
 				playerId: connectedParticipant.playerId,
 				playerName: connectedParticipant.playerName,
-				selectedCardIds: draftSelectedCardIds,
+				selectedCardIds: sortedCards,
 				participantType: connectedParticipant.participantType,
 				teamId: connectedParticipant.teamId,
-				markedCardIds: currentPlayerRecord?.markedCardIds ?? [],
-				credentials: connectedParticipant.credentials ?? null,
+				markedCardIds: sortedMarks,
+				credentials:
+					connectedParticipant.credentials ?? currentPlayerRecord?.credentials ?? null,
 				enforceOriginality: false
 			});
 
@@ -703,18 +898,38 @@
 
 	async function handleToggleManualMark(cardId) {
 		if (!dbInstance) return;
-		if (!connectedParticipant) {
-			openIdentityModal('reaccess');
-			return;
+
+		const nextMarkedSet = new Set(draftMarkedCardIds);
+		if (nextMarkedSet.has(cardId)) {
+			nextMarkedSet.delete(cardId);
+		} else {
+			nextMarkedSet.add(cardId);
 		}
-		if (!currentPlayerRecord) {
-			showFeedback('Salve primeiro a montagem da sua cartela na sessão atual.', 'info');
+		const nextMarked = Array.from(nextMarkedSet).sort((a, b) => a - b);
+		draftMarkedCardIds = nextMarked;
+
+		if (!connectedParticipant) {
 			return;
 		}
 
 		busyAction = `mark_${cardId}`;
 		try {
-			await fetch('/api/bingo/participant', {
+			if (!currentPlayerRecord) {
+				if (
+					draftSelectedCardIds.length === PLAYER_BOARD_SIZE &&
+					draftSelectionValidation.valid
+				) {
+					await syncDraftBoardToDatabaseIfComplete(draftSelectedCardIds, nextMarked);
+				}
+				return;
+			}
+
+			await dbInstance.updatePlayerMarkedCards({
+				playerId: connectedParticipant.playerId,
+				markedCardIds: nextMarked
+			});
+
+			fetch('/api/bingo/participant', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -725,12 +940,7 @@
 					cardId,
 					existingParticipants: snapshot.results
 				})
-			});
-
-			await dbInstance.togglePlayerCardMark({
-				playerId: connectedParticipant.playerId,
-				cardId
-			});
+			}).catch(() => {});
 		} catch (err) {
 			showFeedback(`Erro ao atualizar marcação da carta #${cardId}: ${err.message}`, 'error');
 		} finally {
@@ -839,7 +1049,11 @@
 	}
 
 	function handleDisconnectParticipant() {
+		lastSyncedPlayerId = null;
+		lastSyncedBoardSignature = '';
 		persistConnectedParticipant(snapshot.sessionId, null);
+		draftSelectedCardIds = generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
+		draftMarkedCardIds = [];
 		showFeedback('Você desconectou sua sessão local. Use "Reacessar Cartela" com sua passphrase quando quiser voltar.', 'info');
 	}
 </script>

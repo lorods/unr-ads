@@ -6,9 +6,10 @@ import {
 	PARTICIPATION_CREDIT_DISCLAIMER,
 	PLAYER_BOARD_SIZE,
 	REGISTERED_TOURNAMENT_TEAMS,
-	createBingoDatabase
+	createBingoDatabase,
+	extractBoardSelectionFromStates
 } from '$lib/db/bingoDatabase.js';
-import { generateValidCardSelection } from '$lib/db/cardingSeed.js';
+import { generateValidCardSelection, validateCardSelection } from '$lib/db/cardingSeed.js';
 import {
 	isParticipantNameLocked,
 	validateParticipantNameOriginality,
@@ -105,6 +106,38 @@ export async function POST({ request }) {
 	const clientParticipants = Array.isArray(body?.existingParticipants)
 		? body.existingParticipants
 		: [];
+	if (db.useLocalFallback && clientParticipants.length > 0) {
+		const serverPlayerIds = new Set(snapshot.results.map((r) => r.playerId));
+		for (const cp of clientParticipants) {
+			if (!cp?.playerId || serverPlayerIds.has(cp.playerId)) continue;
+			const cpSelected =
+				Array.isArray(cp.selectedCardIds) && cp.selectedCardIds.length === PLAYER_BOARD_SIZE
+					? cp.selectedCardIds
+					: Array.isArray(cp.cardStates)
+						? extractBoardSelectionFromStates(cp.cardStates).selectedCardIds
+						: [];
+			if (
+				cpSelected.length === PLAYER_BOARD_SIZE &&
+				validateCardSelection(cpSelected, snapshot.cards).valid
+			) {
+				try {
+					await db.initPlayer({
+						playerId: cp.playerId,
+						playerName: cp.playerName ?? cp.playerId,
+						selectedCardIds: cpSelected,
+						participantType: cp.participantType ?? PARTICIPANT_TYPE.INDIVIDUAL,
+						teamId: cp.teamId ?? null,
+						markedCardIds: Array.isArray(cp.markedCardIds) ? cp.markedCardIds : [],
+						credentials: cp.credentials ?? null,
+						enforceOriginality: false
+					});
+					serverPlayerIds.add(cp.playerId);
+				} catch {
+					// Ignora falha de hidratação local de participante
+				}
+			}
+		}
+	}
 	const mergedParticipants = [...snapshot.results, ...clientParticipants];
 	const effectiveStatus = body?.sessionStatus ?? snapshot.session?.status ?? null;
 
@@ -232,12 +265,25 @@ export async function POST({ request }) {
 			teamId: resolvedTeamId
 		});
 
+		const existingPlayerCards =
+			Array.isArray(existingPlayer?.selectedCardIds) &&
+			existingPlayer.selectedCardIds.length === PLAYER_BOARD_SIZE &&
+			validateCardSelection(existingPlayer.selectedCardIds, snapshot.cards).valid
+				? existingPlayer.selectedCardIds
+				: Array.isArray(existingPlayer?.cardStates)
+					? extractBoardSelectionFromStates(existingPlayer.cardStates).selectedCardIds
+					: [];
+
+		const bodyCardsValid =
+			Array.isArray(body?.selectedCardIds) &&
+			body.selectedCardIds.length === PLAYER_BOARD_SIZE &&
+			validateCardSelection(body.selectedCardIds, snapshot.cards).valid;
+
 		const selectedCardIds =
-			Array.isArray(body?.selectedCardIds) && body.selectedCardIds.length === PLAYER_BOARD_SIZE
-				? body.selectedCardIds
-				: Array.isArray(existingPlayer?.selectedCardIds) &&
-					existingPlayer.selectedCardIds.length === PLAYER_BOARD_SIZE
-					? existingPlayer.selectedCardIds
+			existingPlayerCards.length === PLAYER_BOARD_SIZE
+				? existingPlayerCards
+				: bodyCardsValid
+					? body.selectedCardIds
 					: generateValidCardSelection(PLAYER_BOARD_SIZE, snapshot.cards);
 
 		try {
