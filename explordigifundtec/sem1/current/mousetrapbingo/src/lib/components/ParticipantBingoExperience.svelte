@@ -1909,8 +1909,8 @@
 
 				<!-- AVISO REGULAMENTAR OBRIGATÓRIO (REQUISITO F) -->
 				<div class="disclaimer-box" role="note">
-					<strong>⚠️ Aviso sobre Créditos de Participação e Inalterabilidade:</strong>
-					<p>{PARTICIPATION_CREDIT_DISCLAIMER}</p>
+					<strong>⚠️ Aviso sobre Créditos de Participação e Inalterabilidade</strong>
+					<p style="white-space: pre-line">{PARTICIPATION_CREDIT_DISCLAIMER.generic}{PARTICIPATION_CREDIT_DISCLAIMER.individual}</p>
 				</div>
 
 				<form class="dialog-form" onsubmit={handleSubmitIdentityDialog}>
