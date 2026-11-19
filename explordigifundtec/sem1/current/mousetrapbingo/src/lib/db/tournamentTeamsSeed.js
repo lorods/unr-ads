@@ -13,7 +13,7 @@ export const PARTICIPANT_TYPE = Object.freeze({
  * de equipe/usuário sobre a atribuição de créditos e a imutabilidade após o estado "live".
  */
 export const PARTICIPATION_CREDIT_DISCLAIMER =
-	{generic: 'Se você tentar se passar por uma equipe competidora do torneio que não seja a sua e não cadastrá-la ou a si mesmo corretamente, os créditos pela devida participação no bingo irão invariavelmente para o nome por você cadastrado neste momento e sob nenhuma hipótese para outro que possa vir a alegar posteriormente. O nome de participação de equipe não pode ser alterado depois de inscrito.\n', individual: 'O nome de participação avulsa pode ser alterado nas fases pré-lobby e lobby.'};
+	{generic: 'Se você tentar se passar por uma equipe competidora do torneio que não seja a sua e não cadastrá-la ou a si mesmo corretamente, os créditos pela devida participação no bingo irão invariavelmente para o nome por você cadastrado neste momento e sob nenhuma hipótese para outro que possa vir a alegar posteriormente. O nome de participação de equipe não pode ser alterado depois de inscrito.\n', individual: 'O nome de participação avulsa pode ser alterado somente nas fases pré-lobby e lobby.'};
 
 /**
  * Catálogo base das equipes inscritas no torneio de carrinhos-ratoeira (Mousetrap Racing),
